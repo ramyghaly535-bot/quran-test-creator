@@ -943,7 +943,7 @@ export default function Home() {
           </div>
 
           {/* الصفحات المصورة للقرآن - استدعاء تلقائي */}
-          <QuranPagesViewer question={currentQ} surahCache={surahCache} />
+          <QuranPagesViewer key={`test-q-${currentQ.surah}-${currentQ.from}-${currentQ.to}-${currentQ.page}`} question={currentQ} surahCache={surahCache} />
 
           <div style={{ background: 'rgba(8, 20, 43, 0.95)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 10, marginBottom: 8 }}>
             <h3 style={{ color: '#fff5cc', fontWeight: 700, marginBottom: 8, textAlign: 'center', fontSize: 14 }}>اختر الأخطاء إذا وجدت:</h3>

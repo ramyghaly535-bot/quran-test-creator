@@ -180,8 +180,12 @@ function SinglePage({
 }
 
 export default function QuranPagesViewer({ question, surahCache, compact = false, onClose }: QuranPagesViewerProps) {
+  // مفتاح فريد لكل سؤال - يُستخدم للتبعيات لضمان التحديث الصحيح
+  const questionKey = `${question.surah}-${question.from}-${question.to}-${question.page}`;
+
   // البحث عن الصفحات التي يحتويها السؤال
-  const pageResult = useMemo(() => lookupQuestionPages(question, surahCache), [question, surahCache]);
+  // questionKey يُستخدم كتبعية إضافية لضمان التحديث عند تغيير بيانات السؤال
+  const pageResult = useMemo(() => lookupQuestionPages(question, surahCache), [question, surahCache, questionKey]);
 
   // تحميل مسبق فوري للصفحات والصفحات المحيطة
   useEffect(() => {
@@ -191,10 +195,7 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
     if (pageResult.pages.length > 0) {
       preloadPageRange(pageResult.pages[0], 3);
     }
-  }, [pageResult.pages]);
-
-  // مفتاح فريد لكل سؤال
-  const questionKey = `${question.surah}-${question.from}-${question.to}-${question.page}`;
+  }, [questionKey, pageResult.pages]);
 
   // الوضع المدمج
   if (compact) {
