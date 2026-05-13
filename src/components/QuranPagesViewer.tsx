@@ -5,7 +5,7 @@ import { lookupQuestionPages, preloadPage, preloadPageRange, getPageUrl, isPageC
 
 /* ═══════════════════════════════════════════════
    مكون عرض الصفحات المصورة للقرآن الكريم
-   محسن للعرض الفوري باستخدام التخزين المؤقت
+   يستخدم blob URLs فقط - يعمل بدون إنترنت
    ═══════════════════════════════════════════════ */
 
 interface QuranPagesViewerProps {
@@ -15,23 +15,20 @@ interface QuranPagesViewerProps {
   onClose?: () => void;
 }
 
-/** مكون صفحة واحدة محسن للعرض الفوري */
+/** مكون صفحة واحدة - يستخدم blob URL من الذاكرة فقط */
 function SinglePage({
   pageNum,
   compact = false,
-  eager = false,
 }: {
   pageNum: number;
   compact?: boolean;
-  eager?: boolean;
 }) {
   // حالة التحميل - نبدأ بالتحقق من الكاش
-  const cached = isPageCached(pageNum);
-  const [loadStatus, setLoadStatus] = useState<PageLoadStatus>(cached ? 'loaded' : 'idle');
-  const [imageUrl, setImageUrl] = useState<string>(() => getPageUrl(pageNum));
+  const [loadStatus, setLoadStatus] = useState<PageLoadStatus>(() => isPageCached(pageNum) ? 'loaded' : 'idle');
+  const [imageUrl, setImageUrl] = useState<string | null>(() => getPageUrl(pageNum));
   const mountedRef = useRef(true);
 
-  // الاستماع لتغييرات الكاش
+  // الاستماع لتغييرات الكاش وتحميل الصفحة
   useEffect(() => {
     mountedRef.current = true;
 
@@ -62,8 +59,9 @@ function SinglePage({
     };
   }, [pageNum]);
 
-  const isLoaded = loadStatus === 'loaded';
+  const isLoaded = loadStatus === 'loaded' && !!imageUrl;
   const isError = loadStatus === 'error';
+  const isLoading = !isLoaded && !isError;
 
   return (
     <div style={{
@@ -84,12 +82,7 @@ function SinglePage({
           textAlign: 'center',
           borderBottom: '2px solid rgba(245, 197, 66, 0.3)',
         }}>
-          <span style={{
-            color: '#f5c542',
-            fontSize: 14,
-            fontWeight: 700,
-            fontFamily: "'Amiri', serif",
-          }}>
+          <span style={{ color: '#f5c542', fontSize: 14, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
             صفحة {pageNum}
           </span>
         </div>
@@ -103,19 +96,14 @@ function SinglePage({
           textAlign: 'center',
           borderBottom: '1px solid rgba(245, 197, 66, 0.2)',
         }}>
-          <span style={{
-            color: '#f5c542',
-            fontSize: 11,
-            fontWeight: 700,
-            fontFamily: "'Amiri', serif",
-          }}>
+          <span style={{ color: '#f5c542', fontSize: 11, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
             صفحة {pageNum}
           </span>
         </div>
       )}
 
-      {/* مؤشر التحميل - يظهر فقط إذا لم تكن الصفحة محملة */}
-      {!isLoaded && !isError && (
+      {/* مؤشر التحميل */}
+      {isLoading && (
         <div style={{
           width: '100%',
           aspectRatio: '654 / 960',
@@ -125,7 +113,7 @@ function SinglePage({
           background: 'rgba(8, 20, 43, 0.9)',
         }}>
           <div style={{ textAlign: 'center', color: '#f5c542' }}>
-            <div style={{ fontSize: compact ? 24 : 40, marginBottom: compact ? 4 : 8 }}>📖</div>
+            <div style={{ fontSize: compact ? 24 : 40, marginBottom: compact ? 4 : 8, animation: 'float 2s ease-in-out infinite' }}>📖</div>
             <div style={{ fontSize: compact ? 11 : 14, fontWeight: 700 }}>جاري تحميل صفحة {pageNum}...</div>
           </div>
         </div>
@@ -148,8 +136,8 @@ function SinglePage({
         </div>
       )}
 
-      {/* صورة الصفحة - عرض فوري إذا كانت في الكاش */}
-      {isLoaded && (
+      {/* صورة الصفحة - blob URL من الذاكرة يعمل بدون إنترنت */}
+      {isLoaded && imageUrl && (
         <img
           src={imageUrl}
           alt={`صفحة ${pageNum} من المصحف الشريف`}
@@ -172,11 +160,9 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
 
   // تحميل مسبق فوري للصفحات والصفحات المحيطة
   useEffect(() => {
-    // تحميل صفحات السؤال فوراً
     pageResult.pages.forEach(pageNum => {
       preloadPage(pageNum).catch(() => { /* ignore */ });
     });
-    // تحميل الصفحات المحيطة للتنقل السريع
     if (pageResult.pages.length > 0) {
       preloadPageRange(pageResult.pages[0], 3);
     }
@@ -189,7 +175,6 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
   if (compact) {
     return (
       <div style={{ width: '100%' }} key={questionKey}>
-        {/* عنوان مدمج */}
         <div style={{
           background: 'rgba(8, 20, 43, 0.72)',
           border: '1px solid rgba(245, 197, 66, 0.2)',
@@ -203,98 +188,23 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
           gap: 8,
         }}>
           <div style={{ flex: 1, textAlign: 'center' }}>
-            <h3 style={{
-              color: '#fff5cc',
-              fontSize: 13,
-              marginBottom: 2,
-              fontFamily: "'Amiri', serif",
-            }}>
+            <h3 style={{ color: '#fff5cc', fontSize: 13, marginBottom: 2, fontFamily: "'Amiri', serif" }}>
               سورة {question.surah}
             </h3>
-            <p style={{
-              color: '#ffffff',
-              fontSize: 11,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 4,
-              flexWrap: 'wrap',
-            }}>
-              <span style={{
-                display: 'inline-block',
-                background: 'rgba(245, 197, 66, 0.15)',
-                color: '#ffd700',
-                padding: '1px 6px',
-                borderRadius: 4,
-                fontSize: 10,
-                fontWeight: 700,
-              }}>
-                من {question.from}
-              </span>
-              <span style={{
-                display: 'inline-block',
-                background: 'rgba(245, 197, 66, 0.15)',
-                color: '#ffd700',
-                padding: '1px 6px',
-                borderRadius: 4,
-                fontSize: 10,
-                fontWeight: 700,
-              }}>
-                إلى {question.to}
-              </span>
-              <span style={{ color: '#f5c542', fontWeight: 700, fontSize: 10 }}>
-                صفحة {pageResult.pages.join('-')}
-              </span>
+            <p style={{ color: '#ffffff', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>من {question.from}</span>
+              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>إلى {question.to}</span>
+              <span style={{ color: '#f5c542', fontWeight: 700, fontSize: 10 }}>صفحة {pageResult.pages.join('-')}</span>
             </p>
           </div>
           {onClose && (
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              style={{
-                background: 'rgba(255, 107, 107, 0.2)',
-                border: '1px solid rgba(255, 107, 107, 0.4)',
-                color: '#ff6b6b',
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: 14,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-              }}
-              title="إغلاق"
-            >
-              ✕
-            </button>
+            <button onClick={(e) => { e.stopPropagation(); onClose(); }} style={{ background: 'rgba(255, 107, 107, 0.2)', border: '1px solid rgba(255, 107, 107, 0.4)', color: '#ff6b6b', width: 28, height: 28, borderRadius: 6, cursor: 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }} title="إغلاق">✕</button>
           )}
         </div>
-
-        {/* عرض الصفحات المصورة المدمج */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'flex-start',
-          gap: 4,
-          flexDirection: pageResult.isMultiPage ? 'row' : 'column',
-          flexWrap: 'wrap',
-        }}>
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 4, flexDirection: pageResult.isMultiPage ? 'row' : 'column', flexWrap: 'wrap' }}>
           {pageResult.pages.map((pageNum) => (
-            <div
-              key={pageNum}
-              style={{
-                width: pageResult.isMultiPage ? 'calc(50% - 2px)' : '100%',
-              }}
-            >
-              <SinglePage
-                pageNum={pageNum}
-                compact={true}
-                eager={true}
-              />
+            <div key={pageNum} style={{ width: pageResult.isMultiPage ? 'calc(50% - 2px)' : '100%' }}>
+              <SinglePage pageNum={pageNum} compact={true} />
             </div>
           ))}
         </div>
@@ -305,82 +215,18 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
   // الوضع العادي (كامل)
   return (
     <div style={{ width: '100%' }} key={questionKey}>
-      {/* عنوان الصفحات */}
-      <div style={{
-        background: 'rgba(8, 20, 43, 0.72)',
-        border: '2px solid rgba(245, 197, 66, 0.25)',
-        borderRadius: 12,
-        padding: '10px 16px',
-        marginBottom: 8,
-        textAlign: 'center',
-      }}>
-        <h3 style={{
-          color: '#fff5cc',
-          fontSize: 16,
-          marginBottom: 4,
-          fontFamily: "'Amiri', serif",
-        }}>
-          سورة {question.surah}
-        </h3>
-        <p style={{
-          color: '#ffffff',
-          fontSize: 13,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 6,
-          flexWrap: 'wrap',
-        }}>
-          <span style={{
-            display: 'inline-block',
-            background: 'rgba(245, 197, 66, 0.2)',
-            color: '#ffd700',
-            padding: '2px 8px',
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 700,
-          }}>
-            من {question.from}
-          </span>
-          <span style={{
-            display: 'inline-block',
-            background: 'rgba(245, 197, 66, 0.2)',
-            color: '#ffd700',
-            padding: '2px 8px',
-            borderRadius: 6,
-            fontSize: 12,
-            fontWeight: 700,
-          }}>
-            إلى {question.to}
-          </span>
-          <span style={{ color: '#f5c542', fontWeight: 700 }}>
-            صفحة {pageResult.pages.join('-')}
-          </span>
+      <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: '10px 16px', marginBottom: 8, textAlign: 'center' }}>
+        <h3 style={{ color: '#fff5cc', fontSize: 16, marginBottom: 4, fontFamily: "'Amiri', serif" }}>سورة {question.surah}</h3>
+        <p style={{ color: '#ffffff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>من {question.from}</span>
+          <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>إلى {question.to}</span>
+          <span style={{ color: '#f5c542', fontWeight: 700 }}>صفحة {pageResult.pages.join('-')}</span>
         </p>
       </div>
-
-      {/* عرض الصفحات المصورة */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        gap: 6,
-        marginBottom: 8,
-        flexDirection: pageResult.isMultiPage ? 'row' : 'column',
-        flexWrap: 'wrap',
-      }}>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 6, marginBottom: 8, flexDirection: pageResult.isMultiPage ? 'row' : 'column', flexWrap: 'wrap' }}>
         {pageResult.pages.map((pageNum) => (
-          <div
-            key={pageNum}
-            style={{
-              width: pageResult.isMultiPage ? 'calc(50% - 3px)' : '100%',
-            }}
-          >
-            <SinglePage
-              pageNum={pageNum}
-              compact={false}
-              eager={true}
-            />
+          <div key={pageNum} style={{ width: pageResult.isMultiPage ? 'calc(50% - 3px)' : '100%' }}>
+            <SinglePage pageNum={pageNum} compact={false} />
           </div>
         ))}
       </div>

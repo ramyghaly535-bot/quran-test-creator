@@ -196,6 +196,46 @@ export default function Home() {
       .catch(e => console.error('Error loading Quran data:', e));
   }, []);
 
+  /* ═══════════════════════════════════════════════
+     تسجيل Service Worker للعمل بدون إنترنت
+     ═══════════════════════════════════════════════ */
+  const [swReady, setSwReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then((registration) => {
+        console.log('✅ Service Worker مسجل:', registration.scope);
+
+        // إذا كان هناك SW جديد ينتظر، فعّله فوراً
+        if (registration.waiting) {
+          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+
+        // مراقبة تحديثات الـ SW
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'activated') {
+                setSwReady(true);
+                // بدء تحميل صفحات المصحف في الكاش
+                newWorker.postMessage({ type: 'CACHE_ALL_PAGES' });
+              }
+            });
+          }
+        });
+
+        // إذا كان SW فعّال بالفعل
+        if (registration.active) {
+          setSwReady(true);
+          registration.active.postMessage({ type: 'CACHE_ALL_PAGES' });
+        }
+      }).catch((err) => {
+        console.warn('⚠️ فشل تسجيل Service Worker:', err);
+      });
+    }
+  }, []);
+
   useEffect(() => {
     try {
       const savedQuestions = localStorage.getItem('quran_app_questions');
@@ -627,8 +667,13 @@ export default function Home() {
               </div>
             )}
             {quranDataLoaded && (
-              <div style={{ marginTop: 8, background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
-                <span style={{ color: '#22c55e', fontSize: 14 }}>✅ تم تحميل جميع السور ({Object.keys(surahCache).length} سورة)</span>
+              <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                <div style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
+                  <span style={{ color: '#22c55e', fontSize: 14 }}>✅ تم تحميل جميع السور ({Object.keys(surahCache).length} سورة)</span>
+                </div>
+                <div style={{ background: swReady ? 'rgba(34, 197, 94, 0.15)' : 'rgba(245, 197, 66, 0.15)', border: swReady ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(245, 197, 66, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
+                  <span style={{ color: swReady ? '#22c55e' : '#f5c542', fontSize: 14 }}>{swReady ? '✅ وضع بدون إنترنت جاهز' : '⏳ جاري تحميل صفحات المصحف للعمل بدون إنترنت...'}</span>
+                </div>
               </div>
             )}
           </header>

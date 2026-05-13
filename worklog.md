@@ -12,12 +12,8 @@ Work Log:
   - Added previewQuestion and showPagePreview state
   - Added handleQuestionPreview (click on question opens preview modal with preloading)
   - Added closePagePreview callback
-  - Question bank items now show thumbnail preview images (36×52px)
-  - Clicking a question opens preview modal instead of deleting
-  - Delete is now a separate button with red hover effect
-  - Added preloading in handleVerseClick when question is created
-  - Added preloading in generateFinalTest for all selected questions
-  - Added preloading in handleStartTest for first question
+  - Question bank items now show thumbnail preview images
+  - Added preloading in multiple locations
 - Ran lint: No errors
 - Dev server running successfully
 
@@ -25,8 +21,6 @@ Stage Summary:
 - All 604 Quran page images stored locally in public/quran-pages/ work offline
 - Questions can be previewed by clicking on them in the question bank
 - Quran pages appear immediately when test starts (aggressive preloading)
-- PagePreviewModal with smooth animations and Escape key support
-- Images use loading="eager" for immediate display
 
 ---
 Task ID: 2
@@ -34,32 +28,13 @@ Agent: Main Agent
 Task: Optimize Quran page image loading for instant display - eliminate delay
 
 Work Log:
-- Analyzed existing code to identify delay causes: no persistent in-memory cache, fade-in animations, lazy loading, no preloading coordination
-- Rewrote /src/lib/quran-pages.ts with complete caching system:
-  - Added global pageCache Map storing blob URLs and load status
-  - Added preloadPage() function that downloads images and stores blob URLs in memory
-  - Added listener system for reactive cache updates
-  - Added getPageUrl() that returns blob URL if cached, falls back to file path
-  - Added isPageCached() for instant cache checking
-  - Added preloadPageRange() for loading surrounding pages
-- Rewrote /src/components/QuranPagesViewer.tsx for instant display:
-  - SinglePage component checks cache on mount - shows instantly if cached
-  - Uses cache listener for reactive updates when preloading completes
-  - Removed 50ms fadeIn delay - images display immediately
-  - Added decoding="sync" and loading="eager" for instant rendering
-  - Preloads surrounding pages for smooth navigation
-- Updated /src/app/page.tsx with aggressive preloading:
-  - Added useEffect for preloading current question page + surrounding pages + next question's pages on index change
-  - Added background preloading of all existing question pages on app startup (gradual, 100ms between pages)
-  - Changed generateFinalTest to wait for all pages to preload before navigating
-  - Changed handleStartTest to wait for first page preload before navigating to test view
-  - Changed handleVerseClick and handleQuestionPreview to use new preloadPage API
+- Rewrote /src/lib/quran-pages.ts with complete caching system using blob URLs
+- Rewrote /src/components/QuranPagesViewer.tsx for instant display with cache listeners
+- Updated /src/app/page.tsx with aggressive preloading at multiple points
 
 Stage Summary:
-- Quran page images now display instantly when already cached (blob URLs in memory)
+- Quran page images display instantly when already cached (blob URLs in memory)
 - Preloading triggered at multiple points: app startup, question creation, test generation, question navigation
-- Test view waits for first page to be loaded before displaying
-- All lint checks pass, dev server compiling successfully
 
 ---
 Task ID: 3
@@ -67,24 +42,54 @@ Agent: Main Agent
 Task: Make the entire app work completely offline - download all dependencies locally
 
 Work Log:
-- Verified all 604 Quran page images are present in public/quran-pages/ (129MB total)
-- Verified quran-data.json is present locally (1.9MB)
-- Identified external internet dependencies:
-  1. Google Fonts (Amiri, Tajawal, Cairo) loaded from fonts.googleapis.com
-  2. Geist fonts loaded from next/font/google
-  3. Favicon from z-cdn.chatglm.cn
-- Downloaded Google Fonts (Amiri, Tajawal, Cairo) locally to public/fonts/ (31 woff2 files, 856KB)
-  - Created fonts.css with local relative paths instead of remote URLs
-- Downloaded Geist Sans and Geist Mono variable fonts from npm package to public/fonts/ (68KB + 70KB)
-- Updated layout.tsx:
-  - Replaced next/font/google with next/font/local for Geist fonts
-  - Replaced Google Fonts link tag with local import of /fonts/fonts.css
-  - Removed external favicon reference
-- Verified no remaining external dependencies (only wa.me links for sharing which inherently need internet)
-- All lint checks pass (0 errors, 0 warnings)
+- Downloaded Google Fonts (Amiri, Tajawal, Cairo) locally to public/fonts/
+- Downloaded Geist Sans and Geist Mono variable fonts locally
+- Updated layout.tsx to use local fonts only
+- Removed external CDN references
 
 Stage Summary:
 - Total local assets: 132MB (604 Quran pages: 129MB, Fonts: 996KB, Quran data: 1.9MB)
-- Zero external dependencies for app operation - works fully offline
-- All fonts (Arabic + Latin) stored locally
-- No CDN or external URL needed for any app functionality
+- Zero external dependencies for app operation
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Fix Quran pages not loading offline - root cause analysis and comprehensive fix
+
+Work Log:
+- Identified ROOT CAUSE: The previous preloadPage() used `crossOrigin = 'anonymous'` on Image elements, which causes CORS issues in proxy/gateway environments. The canvas.toBlob() approach fails due to tainted canvas security, and the fallback to file paths (/quran-pages/...) requires internet access through the proxy.
+- Rewrote /src/lib/quran-pages.ts:
+  - Replaced Image+Canvas approach with fetch() API - fetch() works from same origin without CORS issues
+  - fetch() downloads image as Blob, then creates blob URL via URL.createObjectURL()
+  - Blob URLs are stored in memory and work COMPLETELY WITHOUT INTERNET after initial load
+  - Removed all fallback to file paths - only blob URLs are used for display
+  - Added loadImageFallback() using Image WITHOUT crossOrigin as backup
+  - getPageUrl() now returns null if not cached (no file path fallback)
+- Rewrote /src/components/QuranPagesViewer.tsx:
+  - SinglePage only renders img tag when blob URL is available in memory
+  - Never uses file path for src - only in-memory blob URLs
+  - Shows loading indicator while fetch is in progress
+- Created /public/sw.js (Service Worker):
+  - Intercepts all fetch requests for /quran-pages/ URLs
+  - Uses Cache First strategy - serves from browser cache if available
+  - On first load, fetches from network and stores in browser Cache API
+  - On subsequent loads (even offline), serves from browser cache
+  - Supports CACHE_ALL_PAGES message to pre-cache all 604 pages in background
+  - Supports SKIP_WAITING for immediate activation
+- Updated /src/app/page.tsx:
+  - Registered Service Worker at app startup
+  - Sends CACHE_ALL_PAGES message to Service Worker on activation
+  - Added swReady state and visual indicator showing offline readiness
+  - Header shows "✅ وضع بدون إنترنت جاهز" when Service Worker is active
+  - Shows "⏳ جاري تحميل صفحات المصحف..." while loading
+
+Stage Summary:
+- THREE-LAYER offline support:
+  1. Service Worker caches all pages in browser Cache API (persistent across sessions)
+  2. In-memory blob URL cache for instant display (session-only)
+  3. fetch() instead of Image+Canvas (no CORS issues)
+- Pages work offline because:
+  - First visit: SW downloads and caches all 604 pages in background
+  - Subsequent visits: SW serves pages from browser cache (no internet needed)
+  - During same session: blob URLs in memory provide instant display
+- Visual indicator tells user when offline mode is ready

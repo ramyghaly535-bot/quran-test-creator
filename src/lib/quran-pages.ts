@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════
    الصفحات المصورة للقرآن الكريم
    نظام استدعاء وعرض صفحات المصحف الشريف
-   مع تخزين مؤقت ذكي للعرض الفوري
+   مع تخزين مؤقت في الذاكرة للعمل بدون إنترنت
    ═══════════════════════════════════════════════ */
 
 /** تنسيق رقم الصفحة بثلاث أرقام */
@@ -37,18 +37,16 @@ export interface QuranVerseData {
 
 /** واجهة نتيجة البحث عن الصفحات */
 export interface PageLookupResult {
-  /** أرقام الصفحات التي يحتويها السؤال */
   pages: number[];
-  /** هل السؤال يمتد على أكثر من صفحة */
   isMultiPage: boolean;
-  /** عدد الصفحات */
   pageCount: number;
-  /** مسارات الصور */
   imagePaths: string[];
 }
 
 /* ═══════════════════════════════════════════════
-   نظام التخزين المؤقت الذكي للصفحات المصورة
+   نظام التخزين المؤقت في الذاكرة
+   الصور تُحمل مرة واحدة وتُخزن كـ blob URLs
+   تعمل بدون إنترنت بعد التحميل الأول
    ═══════════════════════════════════════════════ */
 
 /** حالة تحميل الصورة */
@@ -57,13 +55,14 @@ export type PageLoadStatus = 'idle' | 'loading' | 'loaded' | 'error';
 /** معلومات الصفحة المخزنة */
 interface CachedPage {
   status: PageLoadStatus;
-  blobUrl: string | null;
-  width: number;
-  height: number;
+  blobUrl: string | null;  // blob URL يعمل بدون إنترنت
 }
 
-/** ذاكرة التخزين المؤقت العالمية */
+/** ذاكرة التخزين المؤقت العالمية - كل صورة محملة تُخزن هنا */
 const pageCache = new Map<number, CachedPage>();
+
+/** طوابير الانتظار لكل صفحة (لمنع التحميل المزدوج) */
+const pendingPromises = new Map<number, Promise<PageLoadStatus>>();
 
 /** مستمعو التغييرات */
 type CacheListener = (page: number, status: PageLoadStatus) => void;
@@ -87,54 +86,85 @@ export function getPageStatus(page: number): PageLoadStatus {
   return pageCache.get(page)?.status || 'idle';
 }
 
-/** الحصول على رابط الصفحة المخزنة (blob URL أو مسار عادي) */
-export function getPageUrl(page: number): string {
+/** الحصول على رابط الصفحة المخزنة - blob URL فقط أو لا شيء */
+export function getPageUrl(page: number): string | null {
   const cached = pageCache.get(page);
-  if (cached?.blobUrl) return cached.blobUrl;
-  return getPageImagePath(page);
+  if (cached?.status === 'loaded' && cached.blobUrl) return cached.blobUrl;
+  return null;
 }
 
 /** هل الصفحة محملة ومخزنة في الذاكرة */
 export function isPageCached(page: number): boolean {
-  return pageCache.get(page)?.status === 'loaded';
+  const entry = pageCache.get(page);
+  return entry?.status === 'loaded' && !!entry?.blobUrl;
 }
 
 /** عدد الصفحات المخزنة */
 export function getCachedPagesCount(): number {
   let count = 0;
-  pageCache.forEach(v => { if (v.status === 'loaded') count++; });
+  pageCache.forEach(v => { if (v.status === 'loaded' && v.blobUrl) count++; });
   return count;
 }
 
 /**
- * تحميل صفحة واحدة وتخزينها كـ blob URL
- * يعيد Promise يُحل عند اكتمال التحميل
+ * تحميل صفحة واحدة باستخدام fetch() وتخزينها كـ blob URL
+ * fetch() تعمل من نفس الأصل بدون مشاكل CORS
+ * الـ blob URL يُخزن في الذاكرة ويعمل بدون إنترنت
  */
 export function preloadPage(page: number): Promise<PageLoadStatus> {
+  // إذا كانت محملة بالفعل
   const existing = pageCache.get(page);
-  if (existing?.status === 'loaded') return Promise.resolve('loaded');
-  if (existing?.status === 'loading') {
-    // انتظر حتى يكتمل التحميل الجاري
-    return new Promise((resolve) => {
-      const unsub = addCacheListener((p, status) => {
-        if (p === page && (status === 'loaded' || status === 'error')) {
-          unsub();
-          resolve(status);
-        }
-      });
-    });
+  if (existing?.status === 'loaded' && existing.blobUrl) {
+    return Promise.resolve('loaded');
   }
 
-  pageCache.set(page, { status: 'loading', blobUrl: null, width: 0, height: 0 });
+  // إذا كان التحميل جارياً بالفعل، ننتظر النتيجة
+  const pending = pendingPromises.get(page);
+  if (pending) return pending;
+
+  // بدء التحميل
+  pageCache.set(page, { status: 'loading', blobUrl: null });
   notifyListeners(page, 'loading');
 
+  const promise = fetch(getPageImagePath(page))
+    .then(response => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return response.blob();
+    })
+    .then(blob => {
+      // إنشاء blob URL - هذا الرابط يعمل بدون إنترنت
+      const blobUrl = URL.createObjectURL(blob);
+      // تحرير الـ blob URL القديم إن وجد
+      const oldEntry = pageCache.get(page);
+      if (oldEntry?.blobUrl) {
+        URL.revokeObjectURL(oldEntry.blobUrl);
+      }
+      pageCache.set(page, { status: 'loaded', blobUrl });
+      notifyListeners(page, 'loaded');
+      pendingPromises.delete(page);
+      return 'loaded' as PageLoadStatus;
+    })
+    .catch(err => {
+      console.warn(`فشل تحميل صفحة ${page} عبر fetch:`, err);
+      // محاولة بديلة باستخدام Image بدون crossOrigin
+      return loadImageFallback(page);
+    });
+
+  pendingPromises.set(page, promise);
+  return promise;
+}
+
+/**
+ * طريقة بديلة لتحميل الصورة باستخدام Image + canvas
+ * بدون crossOrigin لتجنب مشاكل CORS
+ */
+function loadImageFallback(page: number): Promise<PageLoadStatus> {
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    
+    // لا نضع crossOrigin - هذا يمنحنا وصولاً كاملاً للصورة من نفس الأصل
+
     img.onload = () => {
       try {
-        // محاولة إنشاء blob URL للعرض الفوري
         const canvas = document.createElement('canvas');
         canvas.width = img.naturalWidth || img.width;
         canvas.height = img.naturalHeight || img.height;
@@ -144,54 +174,40 @@ export function preloadPage(page: number): Promise<PageLoadStatus> {
           canvas.toBlob((blob) => {
             if (blob) {
               const blobUrl = URL.createObjectURL(blob);
-              const existingEntry = pageCache.get(page);
-              // تحرير blob URL القديم إن وجد
-              if (existingEntry?.blobUrl) {
-                URL.revokeObjectURL(existingEntry.blobUrl);
-              }
-              pageCache.set(page, {
-                status: 'loaded',
-                blobUrl,
-                width: canvas.width,
-                height: canvas.height,
-              });
+              const oldEntry = pageCache.get(page);
+              if (oldEntry?.blobUrl) URL.revokeObjectURL(oldEntry.blobUrl);
+              pageCache.set(page, { status: 'loaded', blobUrl });
+              notifyListeners(page, 'loaded');
+              pendingPromises.delete(page);
+              resolve('loaded');
             } else {
-              pageCache.set(page, {
-                status: 'loaded',
-                blobUrl: getPageImagePath(page),
-                width: img.naturalWidth || img.width,
-                height: img.naturalHeight || img.height,
-              });
+              // فشل toBlob - نحفظ كـ data URL
+              try {
+                const dataUrl = canvas.toDataURL('image/png');
+                const oldEntry = pageCache.get(page);
+                if (oldEntry?.blobUrl) URL.revokeObjectURL(oldEntry.blobUrl);
+                pageCache.set(page, { status: 'loaded', blobUrl: dataUrl });
+                notifyListeners(page, 'loaded');
+                pendingPromises.delete(page);
+                resolve('loaded');
+              } catch {
+                markAsError(page);
+                resolve('error');
+              }
             }
-            notifyListeners(page, 'loaded');
-            resolve('loaded');
           }, 'image/png');
         } else {
-          pageCache.set(page, {
-            status: 'loaded',
-            blobUrl: getPageImagePath(page),
-            width: img.naturalWidth || img.width,
-            height: img.naturalHeight || img.height,
-          });
-          notifyListeners(page, 'loaded');
-          resolve('loaded');
+          markAsError(page);
+          resolve('error');
         }
       } catch {
-        // في حالة خطأ CORS أو غيره، نستخدم المسار العادي
-        pageCache.set(page, {
-          status: 'loaded',
-          blobUrl: getPageImagePath(page),
-          width: img.naturalWidth || img.width,
-          height: img.naturalHeight || img.height,
-        });
-        notifyListeners(page, 'loaded');
-        resolve('loaded');
+        markAsError(page);
+        resolve('error');
       }
     };
 
     img.onerror = () => {
-      pageCache.set(page, { status: 'error', blobUrl: null, width: 0, height: 0 });
-      notifyListeners(page, 'error');
+      markAsError(page);
       resolve('error');
     };
 
@@ -199,8 +215,15 @@ export function preloadPage(page: number): Promise<PageLoadStatus> {
   });
 }
 
+/** تعليم صفحة كخاطئة */
+function markAsError(page: number) {
+  pageCache.set(page, { status: 'error', blobUrl: null });
+  notifyListeners(page, 'error');
+  pendingPromises.delete(page);
+}
+
 /**
- * تحميل مسبق لصور صفحات المصحف (متوافق مع الكود القديم)
+ * تحميل مسبق لصور صفحات المصحف
  */
 export function preloadQuranPages(pages: number[]): void {
   pages.forEach(pageNum => {
@@ -240,7 +263,7 @@ export function lookupQuestionPages(
       pages,
       isMultiPage: false,
       pageCount: 1,
-      imagePaths: pages.map(p => getPageUrl(p)),
+      imagePaths: pages.map(p => getPageImagePath(p)),
     };
   }
 
@@ -255,7 +278,7 @@ export function lookupQuestionPages(
     pages: finalPages,
     isMultiPage: finalPages.length > 1,
     pageCount: finalPages.length,
-    imagePaths: finalPages.map(p => getPageUrl(p)),
+    imagePaths: finalPages.map(p => getPageImagePath(p)),
   };
 }
 
@@ -266,7 +289,6 @@ export function isPageAvailable(page: number): boolean {
 
 /**
  * تحميل مسبق لشريحة من الصفحات
- * مفيد لتحميل الصفحات المحيطة بالصفحة الحالية
  */
 export function preloadPageRange(centerPage: number, range: number = 2): void {
   const start = Math.max(1, centerPage - range);
