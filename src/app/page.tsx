@@ -1,6 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
+import QuranPagesViewer from '@/components/QuranPagesViewer';
+import { lookupQuestionPages, preloadAllQuestionPages } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    ثوابت القرآن الكريم
@@ -215,26 +217,12 @@ export default function Home() {
   }, [allResults]);
 
   /* ═══════════════════════════════════════════════
-     تحميل مسبق لصفحات المصحف
+     تحميل مسبق لصفحات المصحف المصورة
      ═══════════════════════════════════════════════ */
 
   useEffect(() => {
     if (testQuestions.length === 0 || !quranDataLoaded) return;
-    const pagesToPreload = new Set<number>();
-    testQuestions.forEach(q => {
-      const surahVerses = surahCache[q.surah];
-      if (surahVerses) {
-        const relevantVerses = surahVerses.filter(v => v.numberInSurah >= q.from && v.numberInSurah <= q.to);
-        const pages = [...new Set(relevantVerses.map(v => v.page))].sort((a, b) => a - b);
-        pages.forEach(p => pagesToPreload.add(p));
-      } else {
-        pagesToPreload.add(q.page);
-      }
-    });
-    pagesToPreload.forEach(pageNum => {
-      const img = new Image();
-      img.src = `/quran-pages/page${padPageNum(pageNum)}.png`;
-    });
+    preloadAllQuestionPages(testQuestions, surahCache);
   }, [testQuestions, surahCache, quranDataLoaded]);
 
   /* ═══════════════════════════════════════════════
@@ -779,14 +767,6 @@ export default function Home() {
     const currentQ = testQuestions[currentQuestionIndex];
     if (!currentQ) return null;
 
-    const questionPages = (() => {
-      const surahVerses = surahCache[currentQ.surah];
-      if (!surahVerses) return [currentQ.page];
-      const relevantVerses = surahVerses.filter(v => v.numberInSurah >= currentQ.from && v.numberInSurah <= currentQ.to);
-      const pages = [...new Set(relevantVerses.map(v => v.page))].sort((a, b) => a - b);
-      return pages.length > 0 ? pages : [currentQ.page];
-    })();
-
     return (
       <div className="pattern-islamic" dir="rtl">
         <div className="relative z-10 max-w-7xl mx-auto px-2 py-4">
@@ -795,25 +775,8 @@ export default function Home() {
             <h2 style={{ fontSize: 13, fontWeight: 700, color: '#fff5cc', textAlign: 'left', flex: 1 }}>{selectedCourse?.name} | سؤال {currentQuestionIndex + 1}/{testQuestions.length}</h2>
           </div>
 
-          <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 10, marginBottom: 8, textAlign: 'center' }}>
-            <h3 style={{ color: '#fff5cc', fontSize: 16, marginBottom: 4, fontFamily: "'Amiri', serif" }}>سورة {currentQ.surah}</h3>
-            <p style={{ color: '#ffffff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
-              <span className="badge">من {currentQ.from}</span>
-              <span className="badge">إلى {currentQ.to}</span>
-              <span style={{ color: '#f5c542', fontWeight: 700 }}>صفحة {questionPages.join('-')}</span>
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 6, marginBottom: 8, flexDirection: questionPages.length > 1 ? 'row' : 'column', flexWrap: 'wrap' }}>
-            {questionPages.map((pageNum) => (
-              <div key={pageNum} style={{ width: questionPages.length > 1 ? 'calc(50% - 3px)' : '100%', background: 'rgba(8, 20, 43, 0.95)', border: '3px solid rgba(245, 197, 66, 0.5)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(245, 197, 66, 0.15)' }}>
-                <div style={{ background: 'linear-gradient(90deg, rgba(245, 197, 66, 0.15) 0%, rgba(245, 197, 66, 0.05) 50%, rgba(245, 197, 66, 0.15) 100%)', padding: '4px 12px', textAlign: 'center', borderBottom: '2px solid rgba(245, 197, 66, 0.3)' }}>
-                  <span style={{ color: '#f5c542', fontSize: 14, fontWeight: 700 }}>صفحة {pageNum}</span>
-                </div>
-                <img src={`/quran-pages/page${padPageNum(pageNum)}.png`} alt={`صفحة ${pageNum} من المصحف`} style={{ width: '100%', height: 'auto', display: 'block' }} />
-              </div>
-            ))}
-          </div>
+          {/* الصفحات المصورة للقرآن - استدعاء تلقائي */}
+          <QuranPagesViewer question={currentQ} surahCache={surahCache} />
 
           <div style={{ background: 'rgba(8, 20, 43, 0.95)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 10, marginBottom: 8 }}>
             <h3 style={{ color: '#fff5cc', fontWeight: 700, marginBottom: 8, textAlign: 'center', fontSize: 14 }}>اختر الأخطاء إذا وجدت:</h3>
