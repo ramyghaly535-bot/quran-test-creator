@@ -524,13 +524,13 @@ export default function Home() {
       }
       selectedQs.sort((a, b) => a.page - b.page);
       setTestQuestions(selectedQs);
-      // تحميل مسبق لجميع صفحات الأسئلة المختارة - ننتظر اكتمال التحميل
-      preloadAllQuestionPages(selectedQs, surahCache).then(() => {
-        setGenerating(false);
-        setErrors({ small: 0, medium: 0, position: 0, weakness: 0 });
-        navigateTo('studentInfo');
-        showToast('تم التوليد!', selectedQs.length + ' أسئلة متنوعة');
-      });
+      // الانتقال فوراً - التحميل المسبق يتم في الخلفية
+      setGenerating(false);
+      setErrors({ small: 0, medium: 0, position: 0, weakness: 0 });
+      navigateTo('studentInfo');
+      showToast('تم التوليد!', selectedQs.length + ' أسئلة متنوعة');
+      // تحميل مسبق في الخلفية
+      preloadAllQuestionPages(selectedQs, surahCache).catch(() => { /* ignore */ });
     }, 1000);
   }, [selectedCourse, questions, showToast, navigateTo]);
 
@@ -541,15 +541,8 @@ export default function Home() {
     }
     setCurrentQuestionIndex(0);
     setCompletedQuestions(new Set());
-    // تحميل مسبق لصفحة السؤال الأول فوراً مع الانتظار
-    if (testQuestions.length > 0) {
-      const firstPages = lookupQuestionPages(testQuestions[0], surahCache);
-      Promise.all(firstPages.pages.map(p => preloadPage(p))).then(() => {
-        navigateTo('test');
-      });
-    } else {
-      navigateTo('test');
-    }
+    // الانتقال فوراً - QuranPagesViewer يعرض الصور مباشرة ثم يحسن بـ blob URL
+    navigateTo('test');
   }, [studentInfo, showToast, navigateTo, testQuestions, surahCache]);
 
   /* ═══════════════════════════════════════════════
