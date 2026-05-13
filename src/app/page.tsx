@@ -168,6 +168,7 @@ export default function Home() {
   const [flashSurah, setFlashSurah] = useState<string | null>(null);
   const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
   const [showPagePreview, setShowPagePreview] = useState(false);
+  const [positionChangedQuestions, setPositionChangedQuestions] = useState<Set<number>>(new Set());
 
   const toastIdRef = useRef(0);
 
@@ -452,26 +453,37 @@ export default function Home() {
   }, [currentQuestionIndex, testQuestions.length, showToast, calculateFinalScore]);
 
   const handleErrorClick = useCallback((type: 'small' | 'medium' | 'position' | 'weakness', value: number) => {
-    setErrors(prev => ({ ...prev, [type]: prev[type] + 1 }));
-    if (type === 'position' && selectedCourse) {
-      const currentQ = testQuestions[currentQuestionIndex];
-      const currentJuz = currentQ.juz;
-      const sameJuzQuestions = questions.filter(q =>
-        q.juz === currentJuz &&
-        q.courseName === selectedCourse.name &&
-        !(q.surah === currentQ.surah && q.from === currentQ.from && q.page === currentQ.page)
-      );
-      if (sameJuzQuestions.length > 0) {
-        const newQ = sameJuzQuestions[Math.floor(Math.random() * sameJuzQuestions.length)];
-        setTestQuestions(prev => { const updated = [...prev]; updated[currentQuestionIndex] = newQ; return updated; });
-        showToast('تم تغيير الموضع', 'سورة ' + newQ.surah + ' صفحة ' + newQ.page);
-      } else {
-        showToast('تنبيه', 'لا يوجد مواضع أخرى متاحة من جزء ' + currentJuz, true);
+    if (type === 'position') {
+      // التحقق مما إذا تم تغيير الموضع مسبقاً لهذا السؤال
+      if (positionChangedQuestions.has(currentQuestionIndex)) {
+        showToast('تنبيه', 'لايمكن تغيير الموضع مرتين', true);
+        return;
+      }
+      // خصم 3 درجات تلقائياً
+      setErrors(prev => ({ ...prev, position: prev.position + 1 }));
+      if (selectedCourse) {
+        const currentQ = testQuestions[currentQuestionIndex];
+        const currentJuz = currentQ.juz;
+        const sameJuzQuestions = questions.filter(q =>
+          q.juz === currentJuz &&
+          q.courseName === selectedCourse.name &&
+          !(q.surah === currentQ.surah && q.from === currentQ.from && q.page === currentQ.page)
+        );
+        if (sameJuzQuestions.length > 0) {
+          const newQ = sameJuzQuestions[Math.floor(Math.random() * sameJuzQuestions.length)];
+          setTestQuestions(prev => { const updated = [...prev]; updated[currentQuestionIndex] = newQ; return updated; });
+          // تسجيل أن هذا السؤال تم تغيير موضعه
+          setPositionChangedQuestions(prev => new Set(prev).add(currentQuestionIndex));
+          showToast('تم تغيير الموضع', 'سورة ' + newQ.surah + ' صفحة ' + newQ.page + ' (خصم 3 درجات)');
+        } else {
+          showToast('تنبيه', 'لا يوجد مواضع أخرى متاحة من جزء ' + currentJuz, true);
+        }
       }
     } else {
+      setErrors(prev => ({ ...prev, [type]: prev[type] + 1 }));
       showToast('تم تسجيل الخطأ', value + ' درجة');
     }
-  }, [selectedCourse, testQuestions, currentQuestionIndex, questions, showToast]);
+  }, [selectedCourse, testQuestions, currentQuestionIndex, questions, showToast, positionChangedQuestions]);
 
   const handleWeaknessClick = useCallback((value: number) => {
     setErrors(prev => ({ ...prev, weakness: prev.weakness + value }));
@@ -541,6 +553,7 @@ export default function Home() {
     }
     setCurrentQuestionIndex(0);
     setCompletedQuestions(new Set());
+    setPositionChangedQuestions(new Set());
     // الانتقال فوراً - QuranPagesViewer يعرض الصور مباشرة ثم يحسن بـ blob URL
     navigateTo('test');
   }, [studentInfo, showToast, navigateTo, testQuestions, surahCache]);
@@ -950,7 +963,7 @@ export default function Home() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 8 }}>
               <button onClick={() => handleErrorClick('small', 0.5)} style={{ background: 'linear-gradient(180deg, #10224d, #09142e)', border: '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer', minHeight: 44 }}>❌ خطأ صغير (0.5)</button>
               <button onClick={() => handleErrorClick('medium', 1)} style={{ background: 'linear-gradient(180deg, #10224d, #09142e)', border: '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer', minHeight: 44 }}>⚠️ خطأ متوسط (1)</button>
-              <button onClick={() => handleErrorClick('position', 3)} style={{ background: 'linear-gradient(180deg, #10224d, #09142e)', border: '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer', minHeight: 44 }}>🔄 تغيير موضع (3)</button>
+              <button onClick={() => handleErrorClick('position', 3)} disabled={positionChangedQuestions.has(currentQuestionIndex)} style={{ background: positionChangedQuestions.has(currentQuestionIndex) ? 'rgba(8, 20, 43, 0.5)' : 'linear-gradient(180deg, #10224d, #09142e)', border: positionChangedQuestions.has(currentQuestionIndex) ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: positionChangedQuestions.has(currentQuestionIndex) ? 'rgba(255,255,255,0.3)' : '#ffffff', cursor: positionChangedQuestions.has(currentQuestionIndex) ? 'not-allowed' : 'pointer', minHeight: 44, opacity: positionChangedQuestions.has(currentQuestionIndex) ? 0.6 : 1, transition: 'all 0.2s ease' }}>{positionChangedQuestions.has(currentQuestionIndex) ? '🚫 تم تغيير الموضع' : '🔄 تغيير موضع (3)'}</button>
               <button onClick={() => setShowWeaknessDialog(true)} style={{ background: 'linear-gradient(180deg, #10224d, #09142e)', border: '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer', minHeight: 44 }}>📉 ضعف التلاوة</button>
             </div>
 
