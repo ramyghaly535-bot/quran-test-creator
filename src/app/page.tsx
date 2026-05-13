@@ -979,9 +979,35 @@ export default function Home() {
               <span style={{ color: '#fff5cc' }}>ضعف: <strong style={{ color: '#f5c542' }}>{errors.weakness}</strong></span>
             </div>
 
-            <button onClick={handleQuestionComplete} style={{ width: '100%', background: 'linear-gradient(90deg, #ffd700 0%, #b8860b 50%, #ffd700 100%)', color: '#0a1628', fontWeight: 900, border: '2px solid #ffd700', borderRadius: 12, padding: 12, fontSize: 16, cursor: 'pointer', minHeight: 48 }}>
-              ✓ {currentQuestionIndex === testQuestions.length - 1 ? 'عرض النتيجة' : 'السؤال التالي'}
-            </button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
+                disabled={currentQuestionIndex === 0}
+                style={{
+                  flex: 1,
+                  background: currentQuestionIndex === 0
+                    ? 'rgba(8, 20, 43, 0.5)'
+                    : 'linear-gradient(90deg, #b8860b 0%, #8B6914 50%, #b8860b 100%)',
+                  color: currentQuestionIndex === 0 ? 'rgba(255,255,255,0.3)' : '#0a1628',
+                  fontWeight: 900,
+                  border: currentQuestionIndex === 0
+                    ? '2px solid rgba(245, 197, 66, 0.15)'
+                    : '2px solid #ffd700',
+                  borderRadius: 12,
+                  padding: 12,
+                  fontSize: 16,
+                  cursor: currentQuestionIndex === 0 ? 'not-allowed' : 'pointer',
+                  minHeight: 48,
+                  opacity: currentQuestionIndex === 0 ? 0.5 : 1,
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                ← السؤال السابق
+              </button>
+              <button onClick={handleQuestionComplete} style={{ flex: 1, background: 'linear-gradient(90deg, #ffd700 0%, #b8860b 50%, #ffd700 100%)', color: '#0a1628', fontWeight: 900, border: '2px solid #ffd700', borderRadius: 12, padding: 12, fontSize: 16, cursor: 'pointer', minHeight: 48 }}>
+                ✓ {currentQuestionIndex === testQuestions.length - 1 ? 'عرض النتيجة' : 'السؤال التالي'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
