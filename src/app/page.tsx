@@ -215,6 +215,29 @@ export default function Home() {
   }, [allResults]);
 
   /* ═══════════════════════════════════════════════
+     تحميل مسبق لصفحات المصحف
+     ═══════════════════════════════════════════════ */
+
+  useEffect(() => {
+    if (testQuestions.length === 0 || !quranDataLoaded) return;
+    const pagesToPreload = new Set<number>();
+    testQuestions.forEach(q => {
+      const surahVerses = surahCache[q.surah];
+      if (surahVerses) {
+        const relevantVerses = surahVerses.filter(v => v.numberInSurah >= q.from && v.numberInSurah <= q.to);
+        const pages = [...new Set(relevantVerses.map(v => v.page))].sort((a, b) => a - b);
+        pages.forEach(p => pagesToPreload.add(p));
+      } else {
+        pagesToPreload.add(q.page);
+      }
+    });
+    pagesToPreload.forEach(pageNum => {
+      const img = new Image();
+      img.src = `/quran-pages/page${padPageNum(pageNum)}.png`;
+    });
+  }, [testQuestions, surahCache, quranDataLoaded]);
+
+  /* ═══════════════════════════════════════════════
      التنقل
      ═══════════════════════════════════════════════ */
 
