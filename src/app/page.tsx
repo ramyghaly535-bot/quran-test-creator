@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import QuranPagesViewer from '@/components/QuranPagesViewer';
 import PagePreviewModal from '@/components/PagePreviewModal';
-import { lookupQuestionPages, preloadQuranPages, preloadAllQuestionPages } from '@/lib/quran-pages';
+import { lookupQuestionPages, preloadAllQuestionPages, preloadPage, preloadPageRange } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    ثوابت القرآن الكريم
@@ -223,10 +223,53 @@ export default function Home() {
      تحميل مسبق لصفحات المصحف المصورة
      ═══════════════════════════════════════════════ */
 
+  // تحميل جميع صفحات أسئلة الاختبار فور تعيينها
   useEffect(() => {
     if (testQuestions.length === 0 || !quranDataLoaded) return;
     preloadAllQuestionPages(testQuestions, surahCache);
   }, [testQuestions, surahCache, quranDataLoaded]);
+
+  // تحميل مسبق فوري لصفحة السؤال الحالي والصفحات المحيطة عند تغيير السؤال
+  useEffect(() => {
+    if (viewMode !== 'test' || testQuestions.length === 0) return;
+    const currentQ = testQuestions[currentQuestionIndex];
+    if (!currentQ || !quranDataLoaded) return;
+    const pages = lookupQuestionPages(currentQ, surahCache);
+    // تحميل فوري لصفحة السؤال الحالي
+    pages.pages.forEach(p => {
+      preloadPage(p).catch(() => { /* ignore */ });
+    });
+    // تحميل الصفحات المحيطة للتنقل السريع
+    if (pages.pages.length > 0) {
+      preloadPageRange(pages.pages[0], 3);
+    }
+    // تحميل مسبق لصفحة السؤال التالي
+    if (currentQuestionIndex < testQuestions.length - 1) {
+      const nextQ = testQuestions[currentQuestionIndex + 1];
+      const nextPages = lookupQuestionPages(nextQ, surahCache);
+      nextPages.pages.forEach(p => {
+        preloadPage(p).catch(() => { /* ignore */ });
+      });
+    }
+  }, [viewMode, currentQuestionIndex, testQuestions, surahCache, quranDataLoaded]);
+
+  // تحميل مسبق لجميع صفحات الأسئلة الموجودة عند بدء التطبيق
+  useEffect(() => {
+    if (!quranDataLoaded || questions.length === 0) return;
+    // تحميل صفحات الأسئلة الموجودة في الخلفية
+    const allPages = new Set<number>();
+    questions.forEach(q => {
+      const result = lookupQuestionPages(q, surahCache);
+      result.pages.forEach(p => allPages.add(p));
+    });
+    // تحميل تدريجي في الخلفية
+    const pageList = [...allPages];
+    pageList.forEach((p, i) => {
+      setTimeout(() => {
+        preloadPage(p).catch(() => { /* ignore */ });
+      }, i * 100); // تحميل تدريجي كل 100ms
+    });
+  }, [quranDataLoaded, questions, surahCache]);
 
   /* ═══════════════════════════════════════════════
      التنقل
@@ -305,7 +348,7 @@ export default function Home() {
       setSelection({ active: false, startIdx: null, endIdx: null });
       // تحميل مسبق فوري لصفحة السؤال المضاف
       const pages = lookupQuestionPages(newQuestion, surahCache);
-      preloadQuranPages(pages.pages);
+      pages.pages.forEach(p => preloadPage(p).catch(() => { /* ignore */ }));
       showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
     }
   }, [selection, surahData, selectedSurah, selectedCourse, showToast, surahCache]);
@@ -317,7 +360,7 @@ export default function Home() {
   const handleQuestionPreview = useCallback((q: Question) => {
     // تحميل مسبق فوري قبل فتح المعاينة
     const pages = lookupQuestionPages(q, surahCache);
-    preloadQuranPages(pages.pages);
+    pages.pages.forEach(p => preloadPage(p).catch(() => { /* ignore */ }));
     setPreviewQuestion(q);
     setShowPagePreview(true);
   }, [surahCache]);
@@ -441,12 +484,13 @@ export default function Home() {
       }
       selectedQs.sort((a, b) => a.page - b.page);
       setTestQuestions(selectedQs);
-      // تحميل مسبق فوري لجميع صفحات الأسئلة المختارة
-      preloadAllQuestionPages(selectedQs, surahCache);
-      setGenerating(false);
-      setErrors({ small: 0, medium: 0, position: 0, weakness: 0 });
-      navigateTo('studentInfo');
-      showToast('تم التوليد!', selectedQs.length + ' أسئلة متنوعة');
+      // تحميل مسبق لجميع صفحات الأسئلة المختارة - ننتظر اكتمال التحميل
+      preloadAllQuestionPages(selectedQs, surahCache).then(() => {
+        setGenerating(false);
+        setErrors({ small: 0, medium: 0, position: 0, weakness: 0 });
+        navigateTo('studentInfo');
+        showToast('تم التوليد!', selectedQs.length + ' أسئلة متنوعة');
+      });
     }, 1000);
   }, [selectedCourse, questions, showToast, navigateTo]);
 
@@ -457,12 +501,15 @@ export default function Home() {
     }
     setCurrentQuestionIndex(0);
     setCompletedQuestions(new Set());
-    // تحميل مسبق لصفحة السؤال الأول فوراً
+    // تحميل مسبق لصفحة السؤال الأول فوراً مع الانتظار
     if (testQuestions.length > 0) {
       const firstPages = lookupQuestionPages(testQuestions[0], surahCache);
-      preloadQuranPages(firstPages.pages);
+      Promise.all(firstPages.pages.map(p => preloadPage(p))).then(() => {
+        navigateTo('test');
+      });
+    } else {
+      navigateTo('test');
     }
-    navigateTo('test');
   }, [studentInfo, showToast, navigateTo, testQuestions, surahCache]);
 
   /* ═══════════════════════════════════════════════

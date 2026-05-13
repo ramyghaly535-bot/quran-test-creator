@@ -1,46 +1,69 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { lookupQuestionPages, preloadQuranPages, type QuranQuestion, type QuranVerseData } from '@/lib/quran-pages';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { lookupQuestionPages, preloadPage, preloadPageRange, getPageUrl, isPageCached, addCacheListener, type QuranQuestion, type QuranVerseData, type PageLoadStatus } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    مكون عرض الصفحات المصورة للقرآن الكريم
+   محسن للعرض الفوري باستخدام التخزين المؤقت
    ═══════════════════════════════════════════════ */
 
 interface QuranPagesViewerProps {
-  /** بيانات السؤال */
   question: QuranQuestion;
-  /** ذاكرة التخزين المؤقت لبيانات السور */
   surahCache: Record<string, QuranVerseData[]>;
-  /** وضع مدمج - عرض مصغر */
   compact?: boolean;
-  /** دالة الإغلاق - للوضع المنبثق */
   onClose?: () => void;
 }
 
-/** مكون صفحة واحدة */
+/** مكون صفحة واحدة محسن للعرض الفوري */
 function SinglePage({
   pageNum,
-  imagePath,
   compact = false,
   eager = false,
 }: {
   pageNum: number;
-  imagePath: string;
   compact?: boolean;
   eager?: boolean;
 }) {
-  const [loaded, setLoaded] = useState(false);
-  const [hasError, setHasError] = useState(false);
-  const [fadeIn, setFadeIn] = useState(false);
+  // حالة التحميل - نبدأ بالتحقق من الكاش
+  const cached = isPageCached(pageNum);
+  const [loadStatus, setLoadStatus] = useState<PageLoadStatus>(cached ? 'loaded' : 'idle');
+  const [imageUrl, setImageUrl] = useState<string>(() => getPageUrl(pageNum));
+  const mountedRef = useRef(true);
 
+  // الاستماع لتغييرات الكاش
   useEffect(() => {
-    if (loaded) {
-      // تأخير بسيط لتشغيل الانتقال
-      const timer = setTimeout(() => setFadeIn(true), 50);
-      return () => clearTimeout(timer);
+    mountedRef.current = true;
+
+    const unsub = addCacheListener((page, status) => {
+      if (page === pageNum && mountedRef.current) {
+        setLoadStatus(status);
+        if (status === 'loaded') {
+          setImageUrl(getPageUrl(pageNum));
+        }
+      }
+    });
+
+    // تحميل الصفحة إذا لم تكن محملة
+    if (!isPageCached(pageNum)) {
+      preloadPage(pageNum).then((status) => {
+        if (mountedRef.current) {
+          setLoadStatus(status);
+          if (status === 'loaded') {
+            setImageUrl(getPageUrl(pageNum));
+          }
+        }
+      });
     }
-  }, [loaded]);
+
+    return () => {
+      mountedRef.current = false;
+      unsub();
+    };
+  }, [pageNum]);
+
+  const isLoaded = loadStatus === 'loaded';
+  const isError = loadStatus === 'error';
 
   return (
     <div style={{
@@ -91,8 +114,8 @@ function SinglePage({
         </div>
       )}
 
-      {/* مؤشر التحميل */}
-      {!loaded && !hasError && (
+      {/* مؤشر التحميل - يظهر فقط إذا لم تكن الصفحة محملة */}
+      {!isLoaded && !isError && (
         <div style={{
           width: '100%',
           aspectRatio: '654 / 960',
@@ -109,7 +132,7 @@ function SinglePage({
       )}
 
       {/* خطأ التحميل */}
-      {hasError && (
+      {isError && (
         <div style={{
           width: '100%',
           aspectRatio: '654 / 960',
@@ -125,35 +148,41 @@ function SinglePage({
         </div>
       )}
 
-      {/* صورة الصفحة مع تأثير التلاشي */}
-      <img
-        src={imagePath}
-        alt={`صفحة ${pageNum} من المصحف الشريف`}
-        loading={eager ? 'eager' : 'lazy'}
-        onLoad={() => setLoaded(true)}
-        onError={() => setHasError(true)}
-        style={{
-          width: '100%',
-          height: 'auto',
-          display: loaded ? 'block' : 'none',
-          opacity: fadeIn ? 1 : 0,
-          transition: 'opacity 0.4s ease-in-out',
-        }}
-      />
+      {/* صورة الصفحة - عرض فوري إذا كانت في الكاش */}
+      {isLoaded && (
+        <img
+          src={imageUrl}
+          alt={`صفحة ${pageNum} من المصحف الشريف`}
+          loading="eager"
+          decoding="sync"
+          style={{
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+          }}
+        />
+      )}
     </div>
   );
 }
 
 export default function QuranPagesViewer({ question, surahCache, compact = false, onClose }: QuranPagesViewerProps) {
   // البحث عن الصفحات التي يحتويها السؤال
-  const pageResult = lookupQuestionPages(question, surahCache);
+  const pageResult = useMemo(() => lookupQuestionPages(question, surahCache), [question, surahCache]);
 
-  // تحميل مسبق للصفحات عند تغيير السؤال
+  // تحميل مسبق فوري للصفحات والصفحات المحيطة
   useEffect(() => {
-    preloadQuranPages(pageResult.pages);
+    // تحميل صفحات السؤال فوراً
+    pageResult.pages.forEach(pageNum => {
+      preloadPage(pageNum).catch(() => { /* ignore */ });
+    });
+    // تحميل الصفحات المحيطة للتنقل السريع
+    if (pageResult.pages.length > 0) {
+      preloadPageRange(pageResult.pages[0], 3);
+    }
   }, [pageResult.pages]);
 
-  // مفتاح فريد لكل سؤال لإعادة تعيين حالة التحميل
+  // مفتاح فريد لكل سؤال
   const questionKey = `${question.surah}-${question.from}-${question.to}-${question.page}`;
 
   // الوضع المدمج
@@ -254,7 +283,7 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
           flexDirection: pageResult.isMultiPage ? 'row' : 'column',
           flexWrap: 'wrap',
         }}>
-          {pageResult.pages.map((pageNum, index) => (
+          {pageResult.pages.map((pageNum) => (
             <div
               key={pageNum}
               style={{
@@ -263,7 +292,6 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
             >
               <SinglePage
                 pageNum={pageNum}
-                imagePath={pageResult.imagePaths[index]}
                 compact={true}
                 eager={true}
               />
@@ -341,7 +369,7 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
         flexDirection: pageResult.isMultiPage ? 'row' : 'column',
         flexWrap: 'wrap',
       }}>
-        {pageResult.pages.map((pageNum, index) => (
+        {pageResult.pages.map((pageNum) => (
           <div
             key={pageNum}
             style={{
@@ -350,9 +378,8 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
           >
             <SinglePage
               pageNum={pageNum}
-              imagePath={pageResult.imagePaths[index]}
               compact={false}
-              eager={index === 0}
+              eager={true}
             />
           </div>
         ))}
