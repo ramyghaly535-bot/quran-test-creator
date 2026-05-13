@@ -86,14 +86,18 @@ export function getPageStatus(page: number): PageLoadStatus {
   return pageCache.get(page)?.status || 'idle';
 }
 
-/** الحصول على رابط الصفحة المخزنة - blob URL فقط أو لا شيء */
-export function getPageUrl(page: number): string | null {
+/**
+ * الحصول على رابط الصفحة
+ * أولوية: blob URL من الكاش > الرابط المباشر
+ */
+export function getPageUrl(page: number): string {
   const cached = pageCache.get(page);
   if (cached?.status === 'loaded' && cached.blobUrl) return cached.blobUrl;
-  return null;
+  // الرابط المباشر كاحتياطي
+  return getPageImagePath(page);
 }
 
-/** هل الصفحة محملة ومخزنة في الذاكرة */
+/** هل الصفحة محملة ومخزنة في الذاكرة كـ blob */
 export function isPageCached(page: number): boolean {
   const entry = pageCache.get(page);
   return entry?.status === 'loaded' && !!entry?.blobUrl;
@@ -146,8 +150,11 @@ export function preloadPage(page: number): Promise<PageLoadStatus> {
     })
     .catch(err => {
       console.warn(`فشل تحميل صفحة ${page} عبر fetch:`, err);
-      // محاولة بديلة باستخدام Image بدون crossOrigin
-      return loadImageFallback(page);
+      // تعليم كخطأ مؤقت - يمكن إعادة المحاولة
+      pageCache.set(page, { status: 'error', blobUrl: null });
+      notifyListeners(page, 'error');
+      pendingPromises.delete(page);
+      return 'error' as PageLoadStatus;
     });
 
   pendingPromises.set(page, promise);
@@ -155,71 +162,13 @@ export function preloadPage(page: number): Promise<PageLoadStatus> {
 }
 
 /**
- * طريقة بديلة لتحميل الصورة باستخدام Image + canvas
- * بدون crossOrigin لتجنب مشاكل CORS
+ * إعادة محاولة تحميل صفحة فاشلة
  */
-function loadImageFallback(page: number): Promise<PageLoadStatus> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    // لا نضع crossOrigin - هذا يمنحنا وصولاً كاملاً للصورة من نفس الأصل
-
-    img.onload = () => {
-      try {
-        const canvas = document.createElement('canvas');
-        canvas.width = img.naturalWidth || img.width;
-        canvas.height = img.naturalHeight || img.height;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(img, 0, 0);
-          canvas.toBlob((blob) => {
-            if (blob) {
-              const blobUrl = URL.createObjectURL(blob);
-              const oldEntry = pageCache.get(page);
-              if (oldEntry?.blobUrl) URL.revokeObjectURL(oldEntry.blobUrl);
-              pageCache.set(page, { status: 'loaded', blobUrl });
-              notifyListeners(page, 'loaded');
-              pendingPromises.delete(page);
-              resolve('loaded');
-            } else {
-              // فشل toBlob - نحفظ كـ data URL
-              try {
-                const dataUrl = canvas.toDataURL('image/png');
-                const oldEntry = pageCache.get(page);
-                if (oldEntry?.blobUrl) URL.revokeObjectURL(oldEntry.blobUrl);
-                pageCache.set(page, { status: 'loaded', blobUrl: dataUrl });
-                notifyListeners(page, 'loaded');
-                pendingPromises.delete(page);
-                resolve('loaded');
-              } catch {
-                markAsError(page);
-                resolve('error');
-              }
-            }
-          }, 'image/png');
-        } else {
-          markAsError(page);
-          resolve('error');
-        }
-      } catch {
-        markAsError(page);
-        resolve('error');
-      }
-    };
-
-    img.onerror = () => {
-      markAsError(page);
-      resolve('error');
-    };
-
-    img.src = getPageImagePath(page);
-  });
-}
-
-/** تعليم صفحة كخاطئة */
-function markAsError(page: number) {
-  pageCache.set(page, { status: 'error', blobUrl: null });
-  notifyListeners(page, 'error');
+export function retryPage(page: number): Promise<PageLoadStatus> {
+  // مسح حالة الخطأ
+  pageCache.delete(page);
   pendingPromises.delete(page);
+  return preloadPage(page);
 }
 
 /**
@@ -257,7 +206,7 @@ export function lookupQuestionPages(
 ): PageLookupResult {
   const surahVerses = surahCache[question.surah];
 
-  if (!surahVerses) {
+  if (!surahVerses || surahVerses.length === 0) {
     const pages = [question.page];
     return {
       pages,

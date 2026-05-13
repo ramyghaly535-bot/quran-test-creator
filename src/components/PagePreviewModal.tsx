@@ -6,7 +6,6 @@ import { type QuranQuestion, type QuranVerseData } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    مكون نافذة معاينة صفحة المصحف
-   يستخدم CSS فقط للانتقالات دون setState في effects
    ═══════════════════════════════════════════════ */
 
 interface PagePreviewModalProps {
@@ -102,16 +101,6 @@ export default function PagePreviewModal({ question, surahCache, isOpen, onClose
               justifyContent: 'center',
               boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
               transition: 'all 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(255, 107, 107, 0.3)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255, 107, 107, 0.6)';
-              (e.currentTarget as HTMLElement).style.color = '#ff6b6b';
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.background = 'rgba(8, 20, 43, 0.95)';
-              (e.currentTarget as HTMLElement).style.borderColor = 'rgba(245, 197, 66, 0.4)';
-              (e.currentTarget as HTMLElement).style.color = '#fff5cc';
             }}
             title="إغلاق"
           >

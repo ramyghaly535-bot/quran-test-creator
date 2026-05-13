@@ -3,7 +3,7 @@
    يخزن جميع ملفات التطبيق مؤقتاً للعمل بدون إنترنت
    ═══════════════════════════════════════════════ */
 
-const CACHE_NAME = 'quran-app-v1';
+const CACHE_NAME = 'quran-app-v2';
 
 // الملفات الأساسية التي نحتاجها للعمل بدون إنترنت
 const CORE_ASSETS = [
@@ -58,6 +58,9 @@ self.addEventListener('fetch', (event) => {
               cache.put(event.request, networkResponse.clone());
             }
             return networkResponse;
+          }).catch(() => {
+            // فشل الشبكة - نعيد خطأ
+            return new Response('Not found', { status: 404 });
           });
         });
       })
@@ -65,25 +68,40 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // باقي الملفات - استراتيجية Cache First مع Network Fallback
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-      return fetch(event.request).then((networkResponse) => {
-        // تخزين الملفات المحلية فقط
-        if (networkResponse.ok && url.pathname.startsWith('/')) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+  // ملفات الخطوط - تخزين مؤقت أولاً
+  if (url.pathname.startsWith('/fonts/')) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return cache.match(event.request).then((cachedResponse) => {
+          if (cachedResponse) return cachedResponse;
+          return fetch(event.request).then((networkResponse) => {
+            if (networkResponse.ok) {
+              cache.put(event.request, networkResponse.clone());
+            }
+            return networkResponse;
+          }).catch(() => {
+            return cache.match(event.request);
           });
-        }
-        return networkResponse;
-      }).catch(() => {
-        // إذا فشل الاتصال بالشبكة، نحاول الكاش مرة أخرى
-        return caches.match(event.request);
-      });
+        });
+      })
+    );
+    return;
+  }
+
+  // باقي الملفات - استراتيجية Network First مع Cache Fallback
+  event.respondWith(
+    fetch(event.request).then((networkResponse) => {
+      // تخزين الملفات المحلية فقط
+      if (networkResponse.ok && url.pathname.startsWith('/')) {
+        const responseToCache = networkResponse.clone();
+        caches.open(CACHE_NAME).then((cache) => {
+          cache.put(event.request, responseToCache);
+        });
+      }
+      return networkResponse;
+    }).catch(() => {
+      // إذا فشل الاتصال بالشبكة، نحاول الكاش
+      return caches.match(event.request);
     })
   );
 });
@@ -98,6 +116,7 @@ self.addEventListener('message', (event) => {
     console.log('[SW] بدء تحميل جميع صفحات المصحف في الكاش...');
     const cachePromise = caches.open(CACHE_NAME).then((cache) => {
       const promises = [];
+      // تحميل على دفعات لتجنب الضغط
       for (let i = 1; i <= 604; i++) {
         const pageNum = String(i).padStart(3, '0');
         const url = `/quran-pages/page${pageNum}.png`;

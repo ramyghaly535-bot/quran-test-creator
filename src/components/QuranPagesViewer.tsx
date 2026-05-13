@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { lookupQuestionPages, preloadPage, preloadPageRange, getPageUrl, isPageCached, addCacheListener, type QuranQuestion, type QuranVerseData, type PageLoadStatus } from '@/lib/quran-pages';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { lookupQuestionPages, preloadPage, preloadPageRange, getPageUrl, getPageImagePath, isPageCached, addCacheListener, retryPage, type QuranQuestion, type QuranVerseData, type PageLoadStatus } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    مكون عرض الصفحات المصورة للقرآن الكريم
-   يستخدم blob URLs فقط - يعمل بدون إنترنت
+   يستخدم الرابط المباشر أولاً ثم يحسن بـ blob URL
    ═══════════════════════════════════════════════ */
 
 interface QuranPagesViewerProps {
@@ -15,7 +15,7 @@ interface QuranPagesViewerProps {
   onClose?: () => void;
 }
 
-/** مكون صفحة واحدة - يستخدم blob URL من الذاكرة فقط */
+/** مكون صفحة واحدة */
 function SinglePage({
   pageNum,
   compact = false,
@@ -23,31 +23,40 @@ function SinglePage({
   pageNum: number;
   compact?: boolean;
 }) {
-  // حالة التحميل - نبدأ بالتحقق من الكاش
-  const [loadStatus, setLoadStatus] = useState<PageLoadStatus>(() => isPageCached(pageNum) ? 'loaded' : 'idle');
-  const [imageUrl, setImageUrl] = useState<string | null>(() => getPageUrl(pageNum));
+  // حالة التحميل
+  const [imgSrc, setImgSrc] = useState<string>(() => {
+    // أولوية: blob URL من الكاش > الرابط المباشر
+    if (isPageCached(pageNum)) {
+      const cachedUrl = getPageUrl(pageNum);
+      if (cachedUrl !== getPageImagePath(pageNum)) return cachedUrl;
+    }
+    return getPageImagePath(pageNum);
+  });
+  const [loadError, setLoadError] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const mountedRef = useRef(true);
 
-  // الاستماع لتغييرات الكاش وتحميل الصفحة
+  // الاستماع لتغييرات الكاش لتحسين الرابط
   useEffect(() => {
     mountedRef.current = true;
 
     const unsub = addCacheListener((page, status) => {
-      if (page === pageNum && mountedRef.current) {
-        setLoadStatus(status);
-        if (status === 'loaded') {
-          setImageUrl(getPageUrl(pageNum));
+      if (page === pageNum && mountedRef.current && status === 'loaded') {
+        // تحسين: استبدال الرابط المباشر بـ blob URL
+        const newUrl = getPageUrl(pageNum);
+        if (newUrl !== getPageImagePath(pageNum)) {
+          setImgSrc(newUrl);
         }
       }
     });
 
-    // تحميل الصفحة إذا لم تكن محملة
+    // تحميل الصفحة في الكاش في الخلفية
     if (!isPageCached(pageNum)) {
       preloadPage(pageNum).then((status) => {
-        if (mountedRef.current) {
-          setLoadStatus(status);
-          if (status === 'loaded') {
-            setImageUrl(getPageUrl(pageNum));
+        if (mountedRef.current && status === 'loaded') {
+          const newUrl = getPageUrl(pageNum);
+          if (newUrl !== getPageImagePath(pageNum)) {
+            setImgSrc(newUrl);
           }
         }
       });
@@ -59,9 +68,37 @@ function SinglePage({
     };
   }, [pageNum]);
 
-  const isLoaded = loadStatus === 'loaded' && !!imageUrl;
-  const isError = loadStatus === 'error';
-  const isLoading = !isLoaded && !isError;
+  // إعادة المحاولة عند الخطأ
+  const handleRetry = useCallback(() => {
+    setLoadError(false);
+    setRetryCount(prev => prev + 1);
+    retryPage(pageNum).then((status) => {
+      if (mountedRef.current) {
+        if (status === 'loaded') {
+          setImgSrc(getPageUrl(pageNum));
+          setLoadError(false);
+        } else {
+          setLoadError(true);
+        }
+      }
+    });
+  }, [pageNum]);
+
+  // عند فشل تحميل الصورة
+  const handleImageError = useCallback(() => {
+    if (retryCount < 2) {
+      // محاولة تلقائية بإعادة التحميل
+      setRetryCount(prev => prev + 1);
+      // تأخير قصير قبل إعادة المحاولة
+      setTimeout(() => {
+        if (mountedRef.current) {
+          setImgSrc(getPageImagePath(pageNum) + '?retry=' + retryCount);
+        }
+      }, 500);
+    } else {
+      setLoadError(true);
+    }
+  }, [pageNum, retryCount]);
 
   return (
     <div style={{
@@ -75,52 +112,21 @@ function SinglePage({
       position: 'relative',
     }}>
       {/* شريط رقم الصفحة */}
-      {!compact && (
-        <div style={{
-          background: 'linear-gradient(90deg, rgba(245, 197, 66, 0.15) 0%, rgba(245, 197, 66, 0.05) 50%, rgba(245, 197, 66, 0.15) 100%)',
-          padding: '6px 12px',
-          textAlign: 'center',
-          borderBottom: '2px solid rgba(245, 197, 66, 0.3)',
-        }}>
-          <span style={{ color: '#f5c542', fontSize: 14, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
-            صفحة {pageNum}
-          </span>
-        </div>
-      )}
+      <div style={{
+        background: compact
+          ? 'rgba(245, 197, 66, 0.1)'
+          : 'linear-gradient(90deg, rgba(245, 197, 66, 0.15) 0%, rgba(245, 197, 66, 0.05) 50%, rgba(245, 197, 66, 0.15) 100%)',
+        padding: compact ? '3px 8px' : '6px 12px',
+        textAlign: 'center',
+        borderBottom: compact ? '1px solid rgba(245, 197, 66, 0.2)' : '2px solid rgba(245, 197, 66, 0.3)',
+      }}>
+        <span style={{ color: '#f5c542', fontSize: compact ? 11 : 14, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
+          صفحة {pageNum}
+        </span>
+      </div>
 
-      {/* شريط رقم الصفحة المدمج */}
-      {compact && (
-        <div style={{
-          background: 'rgba(245, 197, 66, 0.1)',
-          padding: '3px 8px',
-          textAlign: 'center',
-          borderBottom: '1px solid rgba(245, 197, 66, 0.2)',
-        }}>
-          <span style={{ color: '#f5c542', fontSize: 11, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
-            صفحة {pageNum}
-          </span>
-        </div>
-      )}
-
-      {/* مؤشر التحميل */}
-      {isLoading && (
-        <div style={{
-          width: '100%',
-          aspectRatio: '654 / 960',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          background: 'rgba(8, 20, 43, 0.9)',
-        }}>
-          <div style={{ textAlign: 'center', color: '#f5c542' }}>
-            <div style={{ fontSize: compact ? 24 : 40, marginBottom: compact ? 4 : 8, animation: 'float 2s ease-in-out infinite' }}>📖</div>
-            <div style={{ fontSize: compact ? 11 : 14, fontWeight: 700 }}>جاري تحميل صفحة {pageNum}...</div>
-          </div>
-        </div>
-      )}
-
-      {/* خطأ التحميل */}
-      {isError && (
+      {/* خطأ التحميل مع زر إعادة المحاولة */}
+      {loadError && (
         <div style={{
           width: '100%',
           aspectRatio: '654 / 960',
@@ -131,22 +137,41 @@ function SinglePage({
         }}>
           <div style={{ textAlign: 'center', color: '#ff6b6b' }}>
             <div style={{ fontSize: compact ? 24 : 40, marginBottom: compact ? 4 : 8 }}>⚠️</div>
-            <div style={{ fontSize: compact ? 11 : 14, fontWeight: 700 }}>لم يتم العثور على صفحة {pageNum}</div>
+            <div style={{ fontSize: compact ? 11 : 14, fontWeight: 700, marginBottom: 8 }}>خطأ في تحميل صفحة {pageNum}</div>
+            <button
+              onClick={handleRetry}
+              style={{
+                background: 'rgba(245, 197, 66, 0.2)',
+                border: '1px solid rgba(245, 197, 66, 0.4)',
+                color: '#ffd700',
+                padding: '4px 12px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              إعادة المحاولة
+            </button>
           </div>
         </div>
       )}
 
-      {/* صورة الصفحة - blob URL من الذاكرة يعمل بدون إنترنت */}
-      {isLoaded && imageUrl && (
+      {/* صورة الصفحة - الرابط المباشر أو blob URL */}
+      {!loadError && (
         <img
-          src={imageUrl}
+          key={`page-${pageNum}-${retryCount}`}
+          src={imgSrc}
           alt={`صفحة ${pageNum} من المصحف الشريف`}
           loading="eager"
           decoding="sync"
+          onError={handleImageError}
           style={{
             width: '100%',
             height: 'auto',
             display: 'block',
+            minHeight: 200,
+            background: 'rgba(8, 20, 43, 0.9)',
           }}
         />
       )}
