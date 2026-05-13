@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { lookupQuestionPages, preloadPage, preloadPageRange, getPageUrl, getPageImagePath, isPageCached, addCacheListener, retryPage, type QuranQuestion, type QuranVerseData, type PageLoadStatus } from '@/lib/quran-pages';
+import React, { useState, useMemo, useCallback } from 'react';
+import { lookupQuestionPages, getPageImagePath, type QuranQuestion, type QuranVerseData } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    مكون عرض الصفحات المصورة للقرآن الكريم
-   يستخدم الرابط المباشر أولاً ثم يحسن بـ blob URL
+   الصور محفوظة محلياً في public/quran-pages/
+   تعمل بدون إنترنت تماماً مثل بيانات السور
    ═══════════════════════════════════════════════ */
 
 interface QuranPagesViewerProps {
@@ -15,7 +16,7 @@ interface QuranPagesViewerProps {
   onClose?: () => void;
 }
 
-/** مكون صفحة واحدة */
+/** مكون صفحة واحدة - يعرض الصورة مباشرة من الملف المحلي */
 function SinglePage({
   pageNum,
   compact = false,
@@ -23,82 +24,22 @@ function SinglePage({
   pageNum: number;
   compact?: boolean;
 }) {
-  // حالة التحميل
-  const [imgSrc, setImgSrc] = useState<string>(() => {
-    // أولوية: blob URL من الكاش > الرابط المباشر
-    if (isPageCached(pageNum)) {
-      const cachedUrl = getPageUrl(pageNum);
-      if (cachedUrl !== getPageImagePath(pageNum)) return cachedUrl;
-    }
-    return getPageImagePath(pageNum);
-  });
   const [loadError, setLoadError] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
-  const mountedRef = useRef(true);
+  const [retryKey, setRetryKey] = useState(0);
 
-  // الاستماع لتغييرات الكاش لتحسين الرابط
-  useEffect(() => {
-    mountedRef.current = true;
-
-    const unsub = addCacheListener((page, status) => {
-      if (page === pageNum && mountedRef.current && status === 'loaded') {
-        // تحسين: استبدال الرابط المباشر بـ blob URL
-        const newUrl = getPageUrl(pageNum);
-        if (newUrl !== getPageImagePath(pageNum)) {
-          setImgSrc(newUrl);
-        }
-      }
-    });
-
-    // تحميل الصفحة في الكاش في الخلفية
-    if (!isPageCached(pageNum)) {
-      preloadPage(pageNum).then((status) => {
-        if (mountedRef.current && status === 'loaded') {
-          const newUrl = getPageUrl(pageNum);
-          if (newUrl !== getPageImagePath(pageNum)) {
-            setImgSrc(newUrl);
-          }
-        }
-      });
-    }
-
-    return () => {
-      mountedRef.current = false;
-      unsub();
-    };
-  }, [pageNum]);
+  // المسار المباشر للصورة - ملف محلي لا يحتاج إنترنت
+  const imgSrc = getPageImagePath(pageNum);
 
   // إعادة المحاولة عند الخطأ
   const handleRetry = useCallback(() => {
     setLoadError(false);
-    setRetryCount(prev => prev + 1);
-    retryPage(pageNum).then((status) => {
-      if (mountedRef.current) {
-        if (status === 'loaded') {
-          setImgSrc(getPageUrl(pageNum));
-          setLoadError(false);
-        } else {
-          setLoadError(true);
-        }
-      }
-    });
-  }, [pageNum]);
+    setRetryKey(prev => prev + 1);
+  }, []);
 
   // عند فشل تحميل الصورة
   const handleImageError = useCallback(() => {
-    if (retryCount < 2) {
-      // محاولة تلقائية بإعادة التحميل
-      setRetryCount(prev => prev + 1);
-      // تأخير قصير قبل إعادة المحاولة
-      setTimeout(() => {
-        if (mountedRef.current) {
-          setImgSrc(getPageImagePath(pageNum) + '?retry=' + retryCount);
-        }
-      }, 500);
-    } else {
-      setLoadError(true);
-    }
-  }, [pageNum, retryCount]);
+    setLoadError(true);
+  }, []);
 
   return (
     <div style={{
@@ -157,10 +98,10 @@ function SinglePage({
         </div>
       )}
 
-      {/* صورة الصفحة - الرابط المباشر أو blob URL */}
+      {/* صورة الصفحة - مباشرة من الملف المحلي */}
       {!loadError && (
         <img
-          key={`page-${pageNum}-${retryCount}`}
+          key={`page-${pageNum}-${retryKey}`}
           src={imgSrc}
           alt={`صفحة ${pageNum} من المصحف الشريف`}
           loading="eager"
@@ -180,22 +121,11 @@ function SinglePage({
 }
 
 export default function QuranPagesViewer({ question, surahCache, compact = false, onClose }: QuranPagesViewerProps) {
-  // مفتاح فريد لكل سؤال - يُستخدم للتبعيات لضمان التحديث الصحيح
+  // مفتاح فريد لكل سؤال
   const questionKey = `${question.surah}-${question.from}-${question.to}-${question.page}`;
 
   // البحث عن الصفحات التي يحتويها السؤال
-  // questionKey يُستخدم كتبعية إضافية لضمان التحديث عند تغيير بيانات السؤال
   const pageResult = useMemo(() => lookupQuestionPages(question, surahCache), [question, surahCache, questionKey]);
-
-  // تحميل مسبق فوري للصفحات والصفحات المحيطة
-  useEffect(() => {
-    pageResult.pages.forEach(pageNum => {
-      preloadPage(pageNum).catch(() => { /* ignore */ });
-    });
-    if (pageResult.pages.length > 0) {
-      preloadPageRange(pageResult.pages[0], 3);
-    }
-  }, [questionKey, pageResult.pages]);
 
   // الوضع المدمج
   if (compact) {

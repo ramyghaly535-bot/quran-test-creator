@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import QuranPagesViewer from '@/components/QuranPagesViewer';
 import PagePreviewModal from '@/components/PagePreviewModal';
-import { lookupQuestionPages, preloadAllQuestionPages, preloadPage, preloadPageRange } from '@/lib/quran-pages';
+import { lookupQuestionPages } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    ثوابت القرآن الكريم
@@ -198,44 +198,9 @@ export default function Home() {
   }, []);
 
   /* ═══════════════════════════════════════════════
-     تسجيل Service Worker للعمل بدون إنترنت
+     صفحات المصحف محفوظة محلياً - لا تحتاج Service Worker
+     الصور في public/quran-pages/ تعمل بدون إنترنت
      ═══════════════════════════════════════════════ */
-  const [swReady, setSwReady] = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').then((registration) => {
-        console.log('✅ Service Worker مسجل:', registration.scope);
-
-        // إذا كان هناك SW جديد ينتظر، فعّله فوراً
-        if (registration.waiting) {
-          registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-        }
-
-        // مراقبة تحديثات الـ SW
-        registration.addEventListener('updatefound', () => {
-          const newWorker = registration.installing;
-          if (newWorker) {
-            newWorker.addEventListener('statechange', () => {
-              if (newWorker.state === 'activated') {
-                setSwReady(true);
-                // بدء تحميل صفحات المصحف في الكاش
-                newWorker.postMessage({ type: 'CACHE_ALL_PAGES' });
-              }
-            });
-          }
-        });
-
-        // إذا كان SW فعّال بالفعل
-        if (registration.active) {
-          setSwReady(true);
-          registration.active.postMessage({ type: 'CACHE_ALL_PAGES' });
-        }
-      }).catch((err) => {
-        console.warn('⚠️ فشل تسجيل Service Worker:', err);
-      });
-    }
-  }, []);
 
   useEffect(() => {
     try {
@@ -261,56 +226,9 @@ export default function Home() {
   }, [allResults]);
 
   /* ═══════════════════════════════════════════════
-     تحميل مسبق لصفحات المصحف المصورة
+     صفحات المصحف المصورة - محفوظة محلياً لا تحتاج إنترنت
      ═══════════════════════════════════════════════ */
-
-  // تحميل جميع صفحات أسئلة الاختبار فور تعيينها
-  useEffect(() => {
-    if (testQuestions.length === 0 || !quranDataLoaded) return;
-    preloadAllQuestionPages(testQuestions, surahCache);
-  }, [testQuestions, surahCache, quranDataLoaded]);
-
-  // تحميل مسبق فوري لصفحة السؤال الحالي والصفحات المحيطة عند تغيير السؤال
-  useEffect(() => {
-    if (viewMode !== 'test' || testQuestions.length === 0) return;
-    const currentQ = testQuestions[currentQuestionIndex];
-    if (!currentQ || !quranDataLoaded) return;
-    const pages = lookupQuestionPages(currentQ, surahCache);
-    // تحميل فوري لصفحة السؤال الحالي
-    pages.pages.forEach(p => {
-      preloadPage(p).catch(() => { /* ignore */ });
-    });
-    // تحميل الصفحات المحيطة للتنقل السريع
-    if (pages.pages.length > 0) {
-      preloadPageRange(pages.pages[0], 3);
-    }
-    // تحميل مسبق لصفحة السؤال التالي
-    if (currentQuestionIndex < testQuestions.length - 1) {
-      const nextQ = testQuestions[currentQuestionIndex + 1];
-      const nextPages = lookupQuestionPages(nextQ, surahCache);
-      nextPages.pages.forEach(p => {
-        preloadPage(p).catch(() => { /* ignore */ });
-      });
-    }
-  }, [viewMode, currentQuestionIndex, testQuestions, surahCache, quranDataLoaded]);
-
-  // تحميل مسبق لجميع صفحات الأسئلة الموجودة عند بدء التطبيق
-  useEffect(() => {
-    if (!quranDataLoaded || questions.length === 0) return;
-    // تحميل صفحات الأسئلة الموجودة في الخلفية
-    const allPages = new Set<number>();
-    questions.forEach(q => {
-      const result = lookupQuestionPages(q, surahCache);
-      result.pages.forEach(p => allPages.add(p));
-    });
-    // تحميل تدريجي في الخلفية
-    const pageList = [...allPages];
-    pageList.forEach((p, i) => {
-      setTimeout(() => {
-        preloadPage(p).catch(() => { /* ignore */ });
-      }, i * 100); // تحميل تدريجي كل 100ms
-    });
-  }, [quranDataLoaded, questions, surahCache]);
+  // الصور محفوظة في public/quran-pages/ وتُعرض مباشرة بدون تحميل مسبق
 
   /* ═══════════════════════════════════════════════
      التنقل
@@ -387,9 +305,6 @@ export default function Home() {
       };
       setQuestions(prev => [...prev, newQuestion]);
       setSelection({ active: false, startIdx: null, endIdx: null });
-      // تحميل مسبق فوري لصفحة السؤال المضاف
-      const pages = lookupQuestionPages(newQuestion, surahCache);
-      pages.pages.forEach(p => preloadPage(p).catch(() => { /* ignore */ }));
       showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
     }
   }, [selection, surahData, selectedSurah, selectedCourse, showToast, surahCache]);
@@ -399,12 +314,9 @@ export default function Home() {
   }, []);
 
   const handleQuestionPreview = useCallback((q: Question) => {
-    // تحميل مسبق فوري قبل فتح المعاينة
-    const pages = lookupQuestionPages(q, surahCache);
-    pages.pages.forEach(p => preloadPage(p).catch(() => { /* ignore */ }));
     setPreviewQuestion(q);
     setShowPagePreview(true);
-  }, [surahCache]);
+  }, []);
 
   const closePagePreview = useCallback(() => {
     setShowPagePreview(false);
@@ -541,8 +453,6 @@ export default function Home() {
       setErrors({ small: 0, medium: 0, position: 0, weakness: 0 });
       navigateTo('studentInfo');
       showToast('تم التوليد!', selectedQs.length + ' أسئلة متنوعة');
-      // تحميل مسبق في الخلفية
-      preloadAllQuestionPages(selectedQs, surahCache).catch(() => { /* ignore */ });
     }, 1000);
   }, [selectedCourse, questions, showToast, navigateTo]);
 
@@ -677,8 +587,8 @@ export default function Home() {
                 <div style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
                   <span style={{ color: '#22c55e', fontSize: 14 }}>✅ تم تحميل جميع السور ({Object.keys(surahCache).length} سورة)</span>
                 </div>
-                <div style={{ background: swReady ? 'rgba(34, 197, 94, 0.15)' : 'rgba(245, 197, 66, 0.15)', border: swReady ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(245, 197, 66, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
-                  <span style={{ color: swReady ? '#22c55e' : '#f5c542', fontSize: 14 }}>{swReady ? '✅ وضع بدون إنترنت جاهز' : '⏳ جاري تحميل صفحات المصحف للعمل بدون إنترنت...'}</span>
+                <div style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
+                  <span style={{ color: '#22c55e', fontSize: 14 }}>📖 صفحات المصحف محفوظة محلياً</span>
                 </div>
               </div>
             )}
