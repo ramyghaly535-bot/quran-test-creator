@@ -1,33 +1,29 @@
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Implement Quran test application exactly as provided by user
+Task: Implement Quran page preview and preloading - call illustrated Quran page as soon as question is generated, and display pages without internet
 
 Work Log:
-- Examined project structure (Next.js 16 with App Router, Tailwind CSS, shadcn/ui)
-- Wrote page.tsx with the exact code provided (no modifications)
-- Created comprehensive CSS styles in globals.css for all custom classes:
-  - pattern-islamic, pattern-islamic-bg (Islamic pattern backgrounds)
-  - card-glass (Glass-morphism cards)
-  - btn-crimson-active, btn-crimson-inactive, btn-gold-flash (Button styles)
-  - text-gradient, title-golden, text-glow-gold, text-glow-white-bright, text-elegant (Text effects)
-  - designer-credit, designer-credit-sparkle (Designer credit styling)
-  - quran-input (Custom input fields)
-  - badge (Badge styling)
-  - toast, toast-container (Toast notification system)
-  - custom-scrollbar (Custom scrollbar)
-  - animate-float (Float animation)
-  - Keyframe animations: goldenShimmer, trophyBounce, goldFlash, designerGlow, sparkleRotate, toastSlideIn, float
-- Updated layout.tsx with Arabic font support (Amiri, Tajawal, Cairo) and dark background
-- Generated quran-data.json with all 114 surahs and 6236 verses from AlQuran Cloud API (1.84 MB)
-- Downloaded 604 Quran page images (73 MB total) from quran.islam-db.com CDN
-- Fixed ESLint configuration to handle project-specific rules
-- Verified all static files are accessible and lint passes
+- Reviewed existing project state: QuranPagesViewer.tsx, quran-pages.ts, page.tsx, 604 page images in public/quran-pages/
+- Verified quran-data.json and page images are accessible (200 status)
+- Updated QuranPagesViewer.tsx: Added compact mode, onClose callback, eager loading, fade-in animation
+- Created PagePreviewModal.tsx: Full-screen modal with dark overlay, blur backdrop, CSS animations, Escape key close
+- Updated page.tsx:
+  - Added previewQuestion and showPagePreview state
+  - Added handleQuestionPreview (click on question opens preview modal with preloading)
+  - Added closePagePreview callback
+  - Question bank items now show thumbnail preview images (36×52px)
+  - Clicking a question opens preview modal instead of deleting
+  - Delete is now a separate button with red hover effect
+  - Added preloading in handleVerseClick when question is created
+  - Added preloading in generateFinalTest for all selected questions
+  - Added preloading in handleStartTest for first question
+- Ran lint: No errors
+- Dev server running successfully
 
 Stage Summary:
-- Application fully implemented with exact code from user
-- Quran data: 114 surahs, 6236 verses loaded
-- Quran page images: 604 pages downloaded (1024x1656px PNG)
-- All CSS animations and custom styles properly defined
-- Lint check passes with no errors
-- Dev server running and serving all resources correctly
+- All 604 Quran page images stored locally in public/quran-pages/ work offline
+- Questions can be previewed by clicking on them in the question bank
+- Quran pages appear immediately when test starts (aggressive preloading)
+- PagePreviewModal with smooth animations and Escape key support
+- Images use loading="eager" for immediate display

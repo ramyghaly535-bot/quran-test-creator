@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
 import QuranPagesViewer from '@/components/QuranPagesViewer';
-import { lookupQuestionPages, preloadAllQuestionPages } from '@/lib/quran-pages';
+import PagePreviewModal from '@/components/PagePreviewModal';
+import { lookupQuestionPages, preloadQuranPages, preloadAllQuestionPages } from '@/lib/quran-pages';
 
 /* ═══════════════════════════════════════════════
    ثوابت القرآن الكريم
@@ -165,6 +166,8 @@ export default function Home() {
   const [showFireworks, setShowFireworks] = useState(false);
   const [flashCourse, setFlashCourse] = useState<string | null>(null);
   const [flashSurah, setFlashSurah] = useState<string | null>(null);
+  const [previewQuestion, setPreviewQuestion] = useState<Question | null>(null);
+  const [showPagePreview, setShowPagePreview] = useState(false);
 
   const toastIdRef = useRef(0);
 
@@ -300,12 +303,28 @@ export default function Home() {
       };
       setQuestions(prev => [...prev, newQuestion]);
       setSelection({ active: false, startIdx: null, endIdx: null });
+      // تحميل مسبق فوري لصفحة السؤال المضاف
+      const pages = lookupQuestionPages(newQuestion, surahCache);
+      preloadQuranPages(pages.pages);
       showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
     }
-  }, [selection, surahData, selectedSurah, selectedCourse, showToast]);
+  }, [selection, surahData, selectedSurah, selectedCourse, showToast, surahCache]);
 
   const deleteQuestion = useCallback((q: Question) => {
     setQuestions(prev => prev.filter(item => !(item.surah === q.surah && item.from === q.from && item.page === q.page)));
+  }, []);
+
+  const handleQuestionPreview = useCallback((q: Question) => {
+    // تحميل مسبق فوري قبل فتح المعاينة
+    const pages = lookupQuestionPages(q, surahCache);
+    preloadQuranPages(pages.pages);
+    setPreviewQuestion(q);
+    setShowPagePreview(true);
+  }, [surahCache]);
+
+  const closePagePreview = useCallback(() => {
+    setShowPagePreview(false);
+    setTimeout(() => setPreviewQuestion(null), 300);
   }, []);
 
   const clearAllQuestions = useCallback(() => {
@@ -422,6 +441,8 @@ export default function Home() {
       }
       selectedQs.sort((a, b) => a.page - b.page);
       setTestQuestions(selectedQs);
+      // تحميل مسبق فوري لجميع صفحات الأسئلة المختارة
+      preloadAllQuestionPages(selectedQs, surahCache);
       setGenerating(false);
       setErrors({ small: 0, medium: 0, position: 0, weakness: 0 });
       navigateTo('studentInfo');
@@ -436,8 +457,13 @@ export default function Home() {
     }
     setCurrentQuestionIndex(0);
     setCompletedQuestions(new Set());
+    // تحميل مسبق لصفحة السؤال الأول فوراً
+    if (testQuestions.length > 0) {
+      const firstPages = lookupQuestionPages(testQuestions[0], surahCache);
+      preloadQuranPages(firstPages.pages);
+    }
     navigateTo('test');
-  }, [studentInfo, showToast, navigateTo]);
+  }, [studentInfo, showToast, navigateTo, testQuestions, surahCache]);
 
   /* ═══════════════════════════════════════════════
      المشاركة والحذف
@@ -689,18 +715,74 @@ export default function Home() {
                       <div style={{ maxHeight: 300, overflowY: 'auto' }} className="custom-scrollbar">
                         {sortedQuestions.length === 0 ? (
                           <p className="text-center text-glow-gold text-elegant" style={{ padding: 20 }}>لا توجد أسئلة محفوظة. اختر سورة وأضف أسئلة يدوياً.</p>
-                        ) : sortedQuestions.map((q, idx) => (
-                          <div key={q.surah + '-' + q.from + '-' + q.page + '-' + idx} onClick={() => deleteQuestion(q)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 12, marginBottom: 8, cursor: 'pointer', transition: 'all 0.3s' }}>
-                            <div>
-                              <strong style={{ color: '#fff5cc', fontFamily: "'Amiri', serif" }}>{q.surah}</strong>
-                              <div style={{ marginTop: 4 }}>
-                                <span className="badge">من {q.from} إلى {q.to}</span>
-                                <span style={{ color: '#fff5cc', marginRight: 8 }}>صفحة {q.page} - جزء {q.juz}</span>
+                        ) : sortedQuestions.map((q, idx) => {
+                          const qPages = lookupQuestionPages(q, surahCache);
+                          return (
+                          <div key={q.surah + '-' + q.from + '-' + q.page + '-' + idx} onClick={() => handleQuestionPreview(q)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 10, marginBottom: 8, cursor: 'pointer', transition: 'all 0.3s' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                              {/* صورة مصغرة للصفحة */}
+                              <div style={{
+                                width: 36,
+                                height: 52,
+                                borderRadius: 4,
+                                overflow: 'hidden',
+                                border: '1px solid rgba(245, 197, 66, 0.3)',
+                                flexShrink: 0,
+                                background: 'rgba(8, 20, 43, 0.9)',
+                              }}>
+                                <img
+                                  src={qPages.imagePaths[0]}
+                                  alt={`صفحة ${q.page}`}
+                                  loading="lazy"
+                                  style={{
+                                    width: '100%',
+                                    height: '100%',
+                                    objectFit: 'cover',
+                                  }}
+                                />
+                              </div>
+                              <div style={{ minWidth: 0 }}>
+                                <strong style={{ color: '#fff5cc', fontFamily: "'Amiri', serif", fontSize: 13 }}>{q.surah}</strong>
+                                <div style={{ marginTop: 2 }}>
+                                  <span className="badge" style={{ fontSize: 10 }}>من {q.from} إلى {q.to}</span>
+                                  <span style={{ color: '#fff5cc', marginRight: 6, fontSize: 11 }}>صفحة {q.page} - جزء {q.juz}</span>
+                                </div>
                               </div>
                             </div>
-                            <span style={{ color: '#ff6b6b', fontSize: 20 }}>🗑️</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
+                              <span style={{ color: '#f5c542', fontSize: 12, fontWeight: 700 }}>📖</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  deleteQuestion(q);
+                                }}
+                                style={{
+                                  background: 'rgba(255, 107, 107, 0.15)',
+                                  border: '1px solid rgba(255, 107, 107, 0.3)',
+                                  color: '#ff6b6b',
+                                  width: 28,
+                                  height: 28,
+                                  borderRadius: 6,
+                                  cursor: 'pointer',
+                                  fontSize: 14,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'all 0.2s',
+                                }}
+                                onMouseEnter={(e) => {
+                                  (e.currentTarget as HTMLElement).style.background = 'rgba(255, 107, 107, 0.3)';
+                                }}
+                                onMouseLeave={(e) => {
+                                  (e.currentTarget as HTMLElement).style.background = 'rgba(255, 107, 107, 0.15)';
+                                }}
+                                title="حذف السؤال"
+                              >
+                                🗑️
+                              </button>
+                            </div>
                           </div>
-                        ))}
+                        ); })}
                       </div>
                       {sortedQuestions.length > 0 && (
                         <button onClick={clearAllQuestions} style={{ width: '100%', background: 'linear-gradient(90deg, #ff6b6b, #ee5a5a)', color: '#ffffff', fontWeight: 900, border: '2px solid #ffd700', borderRadius: 12, padding: 12, fontSize: 16, cursor: 'pointer' }}>🗑️ مسح جميع الأسئلة</button>
@@ -950,6 +1032,14 @@ export default function Home() {
       {viewMode === 'test' && renderTest()}
       {viewMode === 'results' && renderResults()}
       {viewMode === 'allResults' && renderAllResults()}
+
+      {/* نافذة معاينة صفحة المصحف */}
+      <PagePreviewModal
+        question={previewQuestion}
+        surahCache={surahCache}
+        isOpen={showPagePreview}
+        onClose={closePagePreview}
+      />
     </>
   );
 }
