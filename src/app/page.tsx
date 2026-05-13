@@ -781,9 +781,9 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 6, marginBottom: 8, flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'flex-start', gap: 6, marginBottom: 8, flexDirection: questionPages.length > 1 ? 'row' : 'column', flexWrap: 'wrap' }}>
             {questionPages.map((pageNum) => (
-              <div key={pageNum} style={{ width: '100%', background: 'rgba(8, 20, 43, 0.95)', border: '3px solid rgba(245, 197, 66, 0.5)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(245, 197, 66, 0.15)' }}>
+              <div key={pageNum} style={{ width: questionPages.length > 1 ? 'calc(50% - 3px)' : '100%', background: 'rgba(8, 20, 43, 0.95)', border: '3px solid rgba(245, 197, 66, 0.5)', borderRadius: 12, overflow: 'hidden', boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 20px rgba(245, 197, 66, 0.15)' }}>
                 <div style={{ background: 'linear-gradient(90deg, rgba(245, 197, 66, 0.15) 0%, rgba(245, 197, 66, 0.05) 50%, rgba(245, 197, 66, 0.15) 100%)', padding: '4px 12px', textAlign: 'center', borderBottom: '2px solid rgba(245, 197, 66, 0.3)' }}>
                   <span style={{ color: '#f5c542', fontSize: 14, fontWeight: 700 }}>صفحة {pageNum}</span>
                 </div>
