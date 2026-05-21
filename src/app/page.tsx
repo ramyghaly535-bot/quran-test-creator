@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef, startTransition } from
 import QuranPagesViewer from '@/components/QuranPagesViewer';
 import PagePreviewModal from '@/components/PagePreviewModal';
 import { lookupQuestionPages } from '@/lib/quran-pages';
-import { resilientFetch } from '@/lib/resilient-fetch';
+import { loadQuranData } from '@/lib/quran-data-loader';
 
 /* ═══════════════════════════════════════════════
    ثوابت القرآن الكريم
@@ -109,7 +109,7 @@ const COURSES_DATA: CourseData[] = [
    دوال مساعدة
    ═══════════════════════════════════════════════ */
 
-const QURAN_DATA_URL = '/quran-data.json';
+// بيانات القرآن مضمّنة مباشرة - لا حاجة لجلب من الشبكة
 
 function getSurahJuz(surahName: string): number {
   return SURAH_JUZ[surahName] || 1;
@@ -188,11 +188,11 @@ export default function Home() {
      تحميل البيانات
      ═══════════════════════════════════════════════ */
 
+  // تحميل بيانات القرآن مع آلية إعادة المحاولة التلقائية لخطأ PreconditionFailed
   useEffect(() => {
-    // استخدام resilientFetch الذي يعالج خطأ PreconditionFailed تلقائياً
-    resilientFetch<Record<string, QuranVerse[]>>(QURAN_DATA_URL, 5, 2000)
+    loadQuranData(8, 1500)
       .then((data) => {
-        setSurahCache(data);
+        setSurahCache(data as Record<string, QuranVerse[]>);
         setQuranDataLoaded(true);
       })
       .catch(e => console.error('فشل تحميل بيانات القرآن بعد عدة محاولات:', e));

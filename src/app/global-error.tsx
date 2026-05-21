@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 
 /**
  * مكون معالجة الأخطاء العالمية
- * يعالج خطأ PreconditionFailed (function is pending state) 
+ * يعالج أخطاء التحميل بما فيها PreconditionFailed
  * بإعادة تحميل الصفحة تلقائياً
  */
 export default function GlobalError({
@@ -15,16 +15,28 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
-    // التحقق من خطأ PreconditionFailed
     const errorStr = error.message || String(error);
-    if (errorStr.includes('PreconditionFailed') || errorStr.includes('pending state')) {
-      console.warn('[GlobalError] خطأ PreconditionFailed - إعادة المحاولة تلقائياً...');
-      // إعادة المحاولة بعد 3 ثوان
+    
+    // التحقق من خطأ PreconditionFailed أو خطأ شبكة
+    if (
+      errorStr.includes('PreconditionFailed') ||
+      errorStr.includes('pending state') ||
+      errorStr.includes('Failed to fetch') ||
+      errorStr.includes('NetworkError') ||
+      errorStr.includes('Load failed')
+    ) {
+      console.warn('[GlobalError] خطأ شبكة/تحميل - إعادة المحاولة تلقائياً...');
       const timer = setTimeout(() => {
-        reset();
-      }, 3000);
+        // محاولة إعادة التحميل الكامل للصفحة
+        if (typeof window !== 'undefined') {
+          window.location.reload();
+        } else {
+          reset();
+        }
+      }, 2000);
       return () => clearTimeout(timer);
     }
+    
     console.error('[GlobalError] خطأ غير متوقع:', error);
   }, [error, reset]);
 
@@ -51,15 +63,15 @@ export default function GlobalError({
           maxWidth: 500,
           boxShadow: '0 10px 40px rgba(0,0,0,0.5), 0 0 30px rgba(245, 197, 66, 0.1)',
         }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>⚠️</div>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>⏳</div>
           <h2 style={{ color: '#f5c542', fontSize: 22, fontWeight: 800, marginBottom: 12 }}>
-            خطأ مؤقت في التحميل
+            جاري تحميل التطبيق
           </h2>
           <p style={{ color: '#fff5cc', fontSize: 16, marginBottom: 20, lineHeight: 1.8 }}>
-            التطبيق غير جاهز تماماً بعد. سيتم إعادة المحاولة تلقائياً خلال ثوانٍ.
+            التطبيق يبدأ الآن. سيتم التحميل تلقائياً خلال ثوانٍ...
           </p>
           <button
-            onClick={() => reset()}
+            onClick={() => window.location.reload()}
             style={{
               background: 'linear-gradient(135deg, #f5c542, #ffd700)',
               border: 'none',
@@ -72,9 +84,17 @@ export default function GlobalError({
               boxShadow: '0 4px 15px rgba(245, 197, 66, 0.4)',
             }}
           >
-            🔄 إعادة المحاولة الآن
+            🔄 إعادة التحميل الآن
           </button>
         </div>
+        <script dangerouslySetInnerHTML={{ __html: `
+          // إعادة المحاولة التلقائية عند خطأ PreconditionFailed
+          setTimeout(function() {
+            if (document.querySelector('[data-error-boundary]')) {
+              window.location.reload();
+            }
+          }, 3000);
+        `}} />
       </body>
     </html>
   );
