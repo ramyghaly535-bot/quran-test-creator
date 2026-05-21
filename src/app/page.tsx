@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback, useRef, startTransition } from
 import QuranPagesViewer from '@/components/QuranPagesViewer';
 import PagePreviewModal from '@/components/PagePreviewModal';
 import { lookupQuestionPages } from '@/lib/quran-pages';
+import { resilientFetch } from '@/lib/resilient-fetch';
 
 /* ═══════════════════════════════════════════════
    ثوابت القرآن الكريم
@@ -188,13 +189,13 @@ export default function Home() {
      ═══════════════════════════════════════════════ */
 
   useEffect(() => {
-    fetch(QURAN_DATA_URL)
-      .then(res => res.ok ? res.json() : Promise.reject('Failed'))
-      .then((data: Record<string, QuranVerse[]>) => {
+    // استخدام resilientFetch الذي يعالج خطأ PreconditionFailed تلقائياً
+    resilientFetch<Record<string, QuranVerse[]>>(QURAN_DATA_URL, 5, 2000)
+      .then((data) => {
         setSurahCache(data);
         setQuranDataLoaded(true);
       })
-      .catch(e => console.error('Error loading Quran data:', e));
+      .catch(e => console.error('فشل تحميل بيانات القرآن بعد عدة محاولات:', e));
   }, []);
 
   /* ═══════════════════════════════════════════════
