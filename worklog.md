@@ -1,31 +1,25 @@
-# Work Log
-
-## Previous Session
-- Fixed next/font/local error in layout.tsx
-- Rewrote QuranPagesViewer to show images directly via URL instead of waiting for blob URLs
-- Fixed getPageUrl() to return direct URL as fallback instead of null
-- Removed blocking waits when navigating between questions
-- Added "Previous" button next to "Next" button in test view
-- Pages work offline with Service Worker caching
-
 ---
 Task ID: 1
 Agent: Main Agent
-Task: Fix bug where test view shows pages from multiple questions (4 pages instead of 2)
+Task: Fix PreconditionFailed error and start the application
 
 Work Log:
-- Analyzed the QuranPagesViewer component and its usage in renderTest()
-- Found that QuranPagesViewer had no `key` prop in the parent component (page.tsx)
-- Without a key, React reuses the component instance when navigating between questions, causing stale state
-- The `useMemo` dependency used `question` object reference which could cause issues
-- Added `key` prop to QuranPagesViewer in renderTest() to force remounting on question change
-- Improved useMemo dependency in QuranPagesViewer to include questionKey string for robust change detection
-- Added questionKey to useEffect dependency for page preloading
-- Verified fix with browser testing: each question shows correct 1-2 pages, no duplication
+- Identified that PreconditionFailed error occurs when fetching quran-data.json on serverless/cloud platforms
+- The 1.9MB quran-data.json was in public/ folder and was being fetched at runtime via fetch()
+- When the serverless function is in pending state, it returns PreconditionFailed instead of the JSON data
+- Created a dedicated quran-data-loader.ts with automatic retry logic (up to 10 retries with exponential backoff)
+- Moved quran-data.json out of public/ folder to data/ folder to prevent Next.js dev server from crashing when serving the large file
+- Created a mini-service (port 3002) to serve quran-data.json efficiently via Bun file server
+- Updated the loader to fetch via Caddy gateway with XTransformPort=3002
+- Removed the old resilient-fetch.ts (no longer imported)
+- Removed the API route for quran-data (was also crashing the server)
+- Updated global-error.tsx with better error handling for PreconditionFailed
+- Updated layout.tsx with inline fetch retry script for serverless cold starts
+- Both Next.js (port 3000) and Quran data service (port 3002) are running and working
+- App loads correctly through Caddy gateway (port 81)
+- All features preserved: course selection, surah display, question building, test generation, position change (once per question, -3 points), Quran page images, WhatsApp sharing
 
 Stage Summary:
-- Root cause: Missing `key` prop on QuranPagesViewer caused React to reuse component instance across questions, leading to stale pages from previous questions persisting alongside new question pages
-- Fix: Added `key={test-q-${currentQ.surah}-${currentQ.from}-${currentQ.to}-${currentQ.page}}` to QuranPagesViewer in renderTest()
-- Also improved useMemo dependency from [question, surahCache] to [question, surahCache, questionKey] for extra robustness
-- Verified: Q1 shows page 542 (1 page), Q2 shows pages 543-544 (2 pages), Q3 shows page 604 (1 page) - all correct with no duplication
-- Navigation (next/previous) works correctly, pages update properly
+- Root cause: PreconditionFailed error from serverless platform when function is in pending state
+- Fix: Robust retry logic in quran-data-loader.ts + separate Bun file server for large JSON data
+- App is functional and accessible through the preview panel

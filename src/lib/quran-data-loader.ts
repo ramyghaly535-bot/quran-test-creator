@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════
    محمّل بيانات القرآن الكريم
    مع آلية إعادة المحاولة التلقائية لخطأ PreconditionFailed
-   يستخدم خدمة بيانات القرآن المستقلة (منفذ 3002)
+   البيانات في public/quran-data.json
    ═══════════════════════════════════════════════ */
 
 export interface QuranVerseData {
@@ -30,20 +30,12 @@ function isPreconditionFailedError(data: unknown): boolean {
 }
 
 /**
- * الحصول على رابط بيانات القرآن
- * يستخدم خدمة البيانات المستقلة عبر البوابة (Caddy)
- */
-function getQuranDataUrl(): string {
-  // استخدام خدمة البيانات المستقلة عبر البوابة
-  return '/quran-data.json?XTransformPort=3002';
-}
-
-/**
  * تحميل بيانات القرآن مع إعادة المحاولة التلقائية
  * يعالج خطأ PreconditionFailed (function is pending state) تلقائياً
+ * يزيد وقت الانتظار تدريجياً بين المحاولات
  */
 export async function loadQuranData(
-  maxRetries: number = 8,
+  maxRetries: number = 10,
   baseDelay: number = 1500
 ): Promise<QuranDataMap> {
   // إذا كانت البيانات محفوظة مسبقاً، أرجعها مباشرة
@@ -53,14 +45,13 @@ export async function loadQuranData(
   if (isLoading && loadPromise) return loadPromise;
   
   isLoading = true;
-  const dataUrl = getQuranDataUrl();
   
   loadPromise = (async () => {
     let lastError: unknown = null;
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const res = await fetch(dataUrl);
+        const res = await fetch('/quran-data.json?XTransformPort=3002');
         
         if (res.ok) {
           const data = await res.json() as QuranDataMap;
@@ -68,7 +59,7 @@ export async function loadQuranData(
           // التحقق من أن البيانات صالحة وليست خطأ PreconditionFailed
           if (isPreconditionFailedError(data)) {
             if (attempt < maxRetries) {
-              const delay = baseDelay * Math.min(attempt + 1, 4);
+              const delay = baseDelay * Math.min(attempt + 1, 5);
               console.warn(
                 `[QuranLoader] الدالة غير جاهزة، إعادة المحاولة ${attempt + 1}/${maxRetries} بعد ${delay}ms...`
               );
@@ -80,7 +71,7 @@ export async function loadQuranData(
           
           cachedData = data;
           isLoading = false;
-          console.log(`[QuranLoader] تم تحميل ${Object.keys(data).length} سورة بنجاح`);
+          console.log(`[QuranLoader] ✅ تم تحميل ${Object.keys(data).length} سورة بنجاح`);
           return data;
         }
         
@@ -93,7 +84,7 @@ export async function loadQuranData(
           // إذا كان خطأ PreconditionFailed، أعد المحاولة
           if (isPreconditionFailedError(errorData)) {
             if (attempt < maxRetries) {
-              const delay = baseDelay * Math.min(attempt + 1, 4);
+              const delay = baseDelay * Math.min(attempt + 1, 5);
               console.warn(
                 `[QuranLoader] الدالة غير جاهزة (HTTP ${res.status})، إعادة المحاولة ${attempt + 1}/${maxRetries} بعد ${delay}ms...`
               );
@@ -111,10 +102,9 @@ export async function loadQuranData(
         
         // إذا كان خطأ شبكة، أعد المحاولة
         if (attempt < maxRetries) {
-          const delay = baseDelay * Math.min(attempt + 1, 4);
+          const delay = baseDelay * Math.min(attempt + 1, 5);
           console.warn(
-            `[QuranLoader] خطأ في الشبكة، إعادة المحاولة ${attempt + 1}/${maxRetries} بعد ${delay}ms...`,
-            error
+            `[QuranLoader] خطأ في الشبكة، إعادة المحاولة ${attempt + 1}/${maxRetries} بعد ${delay}ms...`
           );
           await new Promise(resolve => setTimeout(resolve, delay));
           continue;
