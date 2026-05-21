@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "../../public/fonts/fonts.css";
-import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
   title: "منشئ اختبارات القرآن الكريم",
@@ -20,7 +19,6 @@ export default function RootLayout({
         style={{ background: '#050b18', color: '#ffffff', fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}
       >
         {children}
-        <Toaster />
       </body>
     </html>
   );

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useRef, startTransition } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import QuranPagesViewer from '@/components/QuranPagesViewer';
 import PagePreviewModal from '@/components/PagePreviewModal';
 import { lookupQuestionPages } from '@/lib/quran-pages';
@@ -56,30 +56,56 @@ const SURAH_JUZ: Record<string, number> = {
    ═══════════════════════════════════════════════ */
 
 interface CourseData {
-  name: string; start: string; end: string; type: string;
-  pageStart: number; pageEnd: number; questionCount: number; hasJuz30: boolean;
+  name: string;
+  start: string;
+  end: string;
+  type: string;
+  pageStart: number;
+  pageEnd: number;
+  questionCount: number;
+  hasJuz30: boolean;
 }
 
 interface QuranVerse {
-  text: string; numberInSurah: number; page: number; juz: number;
+  text: string;
+  numberInSurah: number;
+  page: number;
+  juz: number;
 }
 
 interface Question {
-  surah: string; from: number; to: number; page: number; courseName: string; juz: number;
+  surah: string;
+  from: number;
+  to: number;
+  page: number;
+  courseName: string;
+  juz: number;
 }
 
 interface StudentInfo {
-  name: string; birthDate: string; birthPlace: string; center: string; teacher: string; governorate: string;
+  name: string;
+  birthDate: string;
+  birthPlace: string;
+  center: string;
+  teacher: string;
+  governorate: string;
 }
 
 interface TestResult {
-  courseName: string; questions: Question[];
+  courseName: string;
+  questions: Question[];
   errors: { small: number; medium: number; position: number; weakness: number };
-  finalScore: number; date: string; time: string; studentInfo: StudentInfo;
+  finalScore: number;
+  date: string;
+  time: string;
+  studentInfo: StudentInfo;
 }
 
 interface ToastItem {
-  id: number; title: string; description: string; isError: boolean;
+  id: number;
+  title: string;
+  description: string;
+  isError: boolean;
 }
 
 /* ═══════════════════════════════════════════════
@@ -109,8 +135,6 @@ const COURSES_DATA: CourseData[] = [
    دوال مساعدة
    ═══════════════════════════════════════════════ */
 
-// بيانات القرآن مضمّنة مباشرة - لا حاجة لجلب من الشبكة
-
 function getSurahJuz(surahName: string): number {
   return SURAH_JUZ[surahName] || 1;
 }
@@ -118,15 +142,25 @@ function getSurahJuz(surahName: string): number {
 function getGenerationRule(course: CourseData): string {
   const totalPages = course.pageEnd - course.pageStart + 1;
   const interval = Math.ceil(totalPages / course.questionCount);
-  if (course.hasJuz30) return course.questionCount + ' أسئلة (1 من الجزء 30 + ' + (course.questionCount - 1) + ' من الأجزاء الأخرى)';
-  if (course.type === "3juz") return course.questionCount + ' أسئلة (سؤال واحد من كل جزء - كل ~' + interval + ' صفحة)';
+  if (course.hasJuz30) {
+    return course.questionCount + ' أسئلة (1 من الجزء 30 + ' + (course.questionCount - 1) + ' من الأجزاء الأخرى)';
+  }
+  if (course.type === "3juz") {
+    return course.questionCount + ' أسئلة (سؤال واحد من كل جزء - كل ~' + interval + ' صفحة)';
+  }
   return course.questionCount + ' أسئلة (كل ~' + interval + ' صفحة)';
 }
 
 function getScoreTier(score: number) {
-  if (score >= 90) return { tier: 'gold', color: '#ffd700', colorLight: '#fff5cc', gradient: 'linear-gradient(135deg, #ffd700 0%, #ffec80 50%, #ffd700 100%)', shadow: '0 0 30px rgba(255, 215, 0, 0.5)', cupEmoji: '🏆', label: 'ممتاز', borderColor: '#ffd700' };
-  if (score >= 80) return { tier: 'silver', color: '#c0c0c0', colorLight: '#e8e8e8', gradient: 'linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 50%, #c0c0c0 100%)', shadow: '0 0 30px rgba(192, 192, 192, 0.5)', cupEmoji: '🏆', label: 'جيد جداً', borderColor: '#c0c0c0' };
-  if (score >= 75) return { tier: 'bronze', color: '#cd7f32', colorLight: '#e8c49a', gradient: 'linear-gradient(135deg, #cd7f32 0%, #e8c49a 50%, #cd7f32 100%)', shadow: '0 0 30px rgba(205, 127, 50, 0.5)', cupEmoji: '🏆', label: 'جيد', borderColor: '#cd7f32' };
+  if (score >= 90) {
+    return { tier: 'gold', color: '#ffd700', colorLight: '#fff5cc', gradient: 'linear-gradient(135deg, #ffd700 0%, #ffec80 50%, #ffd700 100%)', shadow: '0 0 30px rgba(255, 215, 0, 0.5)', cupEmoji: '🏆', label: 'ممتاز', borderColor: '#ffd700' };
+  }
+  if (score >= 80) {
+    return { tier: 'silver', color: '#c0c0c0', colorLight: '#e8e8e8', gradient: 'linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 50%, #c0c0c0 100%)', shadow: '0 0 30px rgba(192, 192, 192, 0.5)', cupEmoji: '🏆', label: 'جيد جداً', borderColor: '#c0c0c0' };
+  }
+  if (score >= 75) {
+    return { tier: 'bronze', color: '#cd7f32', colorLight: '#e8c49a', gradient: 'linear-gradient(135deg, #cd7f32 0%, #e8c49a 50%, #cd7f32 100%)', shadow: '0 0 30px rgba(205, 127, 50, 0.5)', cupEmoji: '🏆', label: 'جيد', borderColor: '#cd7f32' };
+  }
   return { tier: 'fail', color: '#ff6b6b', colorLight: '#ffb3b3', gradient: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%)', shadow: '0 0 20px rgba(255, 107, 107, 0.3)', cupEmoji: '', label: '', borderColor: '#ff6b6b' };
 }
 
@@ -188,7 +222,6 @@ export default function Home() {
      تحميل البيانات
      ═══════════════════════════════════════════════ */
 
-  // تحميل بيانات القرآن مع آلية إعادة المحاولة التلقائية لخطأ PreconditionFailed
   useEffect(() => {
     loadQuranData(8, 1500)
       .then((data) => {
@@ -198,23 +231,14 @@ export default function Home() {
       .catch(e => console.error('فشل تحميل بيانات القرآن بعد عدة محاولات:', e));
   }, []);
 
-  /* ═══════════════════════════════════════════════
-     صفحات المصحف محفوظة محلياً - لا تحتاج Service Worker
-     الصور في public/quran-pages/ تعمل بدون إنترنت
-     ═══════════════════════════════════════════════ */
-
   useEffect(() => {
     try {
       const savedQuestions = localStorage.getItem('quran_app_questions');
       const savedResults = localStorage.getItem('quran_test_results');
       const parsedQuestions = savedQuestions ? JSON.parse(savedQuestions) : [];
       const parsedResults = savedResults ? JSON.parse(savedResults) : [];
-      if (parsedQuestions.length > 0 || parsedResults.length > 0) {
-        startTransition(() => {
-          if (parsedQuestions.length > 0) setQuestions(parsedQuestions);
-          if (parsedResults.length > 0) setAllResults(parsedResults);
-        });
-      }
+      if (parsedQuestions.length > 0) setQuestions(parsedQuestions);
+      if (parsedResults.length > 0) setAllResults(parsedResults);
     } catch (e) { console.error('Error loading saved data:', e); }
   }, []);
 
@@ -225,11 +249,6 @@ export default function Home() {
   useEffect(() => {
     try { localStorage.setItem('quran_test_results', JSON.stringify(allResults)); } catch (e) { /* ignore */ }
   }, [allResults]);
-
-  /* ═══════════════════════════════════════════════
-     صفحات المصحف المصورة - محفوظة محلياً لا تحتاج إنترنت
-     ═══════════════════════════════════════════════ */
-  // الصور محفوظة في public/quran-pages/ وتُعرض مباشرة بدون تحميل مسبق
 
   /* ═══════════════════════════════════════════════
      التنقل
@@ -308,7 +327,7 @@ export default function Home() {
       setSelection({ active: false, startIdx: null, endIdx: null });
       showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
     }
-  }, [selection, surahData, selectedSurah, selectedCourse, showToast, surahCache]);
+  }, [selection, surahData, selectedSurah, selectedCourse, showToast]);
 
   const deleteQuestion = useCallback((q: Question) => {
     setQuestions(prev => prev.filter(item => !(item.surah === q.surah && item.from === q.from && item.page === q.page)));
@@ -365,14 +384,18 @@ export default function Home() {
     }
   }, [currentQuestionIndex, testQuestions.length, showToast, calculateFinalScore]);
 
+  const handlePrevQuestion = useCallback(() => {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1);
+    }
+  }, [currentQuestionIndex]);
+
   const handleErrorClick = useCallback((type: 'small' | 'medium' | 'position' | 'weakness', value: number) => {
     if (type === 'position') {
-      // التحقق مما إذا تم تغيير الموضع مسبقاً لهذا السؤال
       if (positionChangedQuestions.has(currentQuestionIndex)) {
         showToast('تنبيه', 'لايمكن تغيير الموضع مرتين', true);
         return;
       }
-      // خصم 3 درجات تلقائياً
       setErrors(prev => ({ ...prev, position: prev.position + 1 }));
       if (selectedCourse) {
         const currentQ = testQuestions[currentQuestionIndex];
@@ -384,8 +407,11 @@ export default function Home() {
         );
         if (sameJuzQuestions.length > 0) {
           const newQ = sameJuzQuestions[Math.floor(Math.random() * sameJuzQuestions.length)];
-          setTestQuestions(prev => { const updated = [...prev]; updated[currentQuestionIndex] = newQ; return updated; });
-          // تسجيل أن هذا السؤال تم تغيير موضعه
+          setTestQuestions(prev => {
+            const updated = [...prev];
+            updated[currentQuestionIndex] = newQ;
+            return updated;
+          });
           setPositionChangedQuestions(prev => new Set(prev).add(currentQuestionIndex));
           showToast('تم تغيير الموضع', 'سورة ' + newQ.surah + ' صفحة ' + newQ.page + ' (خصم 3 درجات)');
         } else {
@@ -425,31 +451,34 @@ export default function Home() {
           selectedQs.push(juz30Q[Math.floor(Math.random() * juz30Q.length)]);
         } else {
           showToast('تنبيه', 'يجب إضافة سؤال واحد على الأقل من الجزء 30', true);
-          setGenerating(false); return;
+          setGenerating(false);
+          return;
         }
         const remaining = selectedCourse.questionCount - 1;
         if (otherQ.length >= remaining) {
           const shuffled = [...otherQ].sort(() => Math.random() - 0.5);
           for (let i = 0; i < remaining; i++) {
             const q = shuffled[i];
-            if (!selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page))
+            if (!selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
               selectedQs.push(q);
+            }
           }
         } else {
           showToast('تنبيه', 'تحتاج إلى ' + remaining + ' أسئلة أخرى', true);
-          setGenerating(false); return;
+          setGenerating(false);
+          return;
         }
       } else {
         const shuffled = [...courseQuestions].sort(() => Math.random() - 0.5);
         for (let i = 0; i < selectedCourse.questionCount; i++) {
           const q = shuffled[i];
-          if (!selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page))
+          if (!selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
             selectedQs.push(q);
+          }
         }
       }
       selectedQs.sort((a, b) => a.page - b.page);
       setTestQuestions(selectedQs);
-      // الانتقال فوراً - التحميل المسبق يتم في الخلفية
       setGenerating(false);
       setErrors({ small: 0, medium: 0, position: 0, weakness: 0 });
       navigateTo('studentInfo');
@@ -465,9 +494,8 @@ export default function Home() {
     setCurrentQuestionIndex(0);
     setCompletedQuestions(new Set());
     setPositionChangedQuestions(new Set());
-    // الانتقال فوراً - QuranPagesViewer يعرض الصور مباشرة ثم يحسن بـ blob URL
     navigateTo('test');
-  }, [studentInfo, showToast, navigateTo, testQuestions, surahCache]);
+  }, [studentInfo, showToast, navigateTo]);
 
   /* ═══════════════════════════════════════════════
      المشاركة والحذف
@@ -497,12 +525,22 @@ export default function Home() {
 
   const BackButton = ({ label }: { label?: string }) => (
     <button onClick={goBack} style={{
-      background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)',
-      color: '#fff5cc', padding: '6px 14px', borderRadius: 8, cursor: 'pointer',
-      marginBottom: 8, fontSize: 13, fontWeight: 700, display: 'inline-flex',
-      alignItems: 'center', gap: 6, minHeight: 36
+      background: 'rgba(8, 20, 43, 0.72)',
+      border: '2px solid rgba(245, 197, 66, 0.25)',
+      color: '#fff5cc',
+      padding: '6px 14px',
+      borderRadius: 8,
+      cursor: 'pointer',
+      marginBottom: 8,
+      fontSize: 13,
+      fontWeight: 700,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 6,
+      minHeight: 36
     }}>
-      <span style={{ fontSize: 16 }}>→</span><span>{label || 'عودة'}</span>
+      <span style={{ fontSize: 16 }}>→</span>
+      <span>{label || 'عودة'}</span>
     </button>
   );
 
@@ -520,7 +558,11 @@ export default function Home() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
 
-      interface Particle { x: number; y: number; vx: number; vy: number; color: string; size: number; life: number; maxLife: number; type: 'spark' | 'confetti'; rotation: number; }
+      interface Particle {
+        x: number; y: number; vx: number; vy: number;
+        color: string; size: number; life: number; maxLife: number;
+        type: 'spark' | 'confetti'; rotation: number;
+      }
       const colors = ['#ffd700', '#ff6b6b', '#4ade80', '#60a5fa', '#f472b6', '#a78bfa', '#fb923c', '#22d3ee'];
       const particles: Particle[] = [];
 
@@ -528,7 +570,17 @@ export default function Home() {
         for (let i = 0; i < 30; i++) {
           const angle = (Math.PI * 2 * i) / 30;
           const speed = 2 + Math.random() * 5;
-          particles.push({ x, y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, color: colors[Math.floor(Math.random() * colors.length)], size: 2 + Math.random() * 3, life: 0, maxLife: 40 + Math.random() * 40, type: Math.random() > 0.5 ? 'spark' : 'confetti', rotation: Math.random() * Math.PI * 2 });
+          particles.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            size: 2 + Math.random() * 3,
+            life: 0,
+            maxLife: 40 + Math.random() * 40,
+            type: Math.random() > 0.5 ? 'spark' : 'confetti',
+            rotation: Math.random() * Math.PI * 2
+          });
         }
       };
 
@@ -536,18 +588,39 @@ export default function Home() {
       const startTime = Date.now();
       const animate = () => {
         const elapsed = Date.now() - startTime;
-        if (elapsed > 8000) { ctx.clearRect(0, 0, canvas.width, canvas.height); setShowFireworks(false); return; }
+        if (elapsed > 8000) {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          setShowFireworks(false);
+          return;
+        }
         ctx.fillStyle = 'rgba(5, 11, 24, 0.15)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
-        if (elapsed < 6000 && Math.random() > 0.9) createExplosion(Math.random() * canvas.width, Math.random() * canvas.height * 0.6);
+        if (elapsed < 6000 && Math.random() > 0.9) {
+          createExplosion(Math.random() * canvas.width, Math.random() * canvas.height * 0.6);
+        }
         for (let i = particles.length - 1; i >= 0; i--) {
           const p = particles[i];
-          p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life++;
-          if (p.life >= p.maxLife) { particles.splice(i, 1); continue; }
+          p.x += p.vx;
+          p.y += p.vy;
+          p.vy += 0.05;
+          p.life++;
+          if (p.life >= p.maxLife) {
+            particles.splice(i, 1);
+            continue;
+          }
           const alpha = 1 - p.life / p.maxLife;
-          ctx.save(); ctx.globalAlpha = alpha; ctx.translate(p.x, p.y); ctx.rotate(p.rotation); ctx.fillStyle = p.color;
-          if (p.type === 'spark') { ctx.beginPath(); ctx.arc(0, 0, p.size, 0, Math.PI * 2); ctx.fill(); }
-          else { ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2); }
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(p.x, p.y);
+          ctx.rotate(p.rotation);
+          ctx.fillStyle = p.color;
+          if (p.type === 'spark') {
+            ctx.beginPath();
+            ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+          }
           ctx.restore();
         }
         animFrame = requestAnimationFrame(animate);
@@ -558,7 +631,12 @@ export default function Home() {
       animate();
       return () => cancelAnimationFrame(animFrame);
     }, []);
-    return <canvas ref={canvasRef} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9998, pointerEvents: 'none' }} />;
+    return (
+      <canvas
+        ref={canvasRef}
+        style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9998, pointerEvents: 'none' }}
+      />
+    );
   };
 
   /* ═══════════════════════════════════════════════
@@ -566,7 +644,6 @@ export default function Home() {
      ═══════════════════════════════════════════════ */
 
   const renderHome = () => {
-    const sortedQuestions = [...questions].sort((a, b) => a.page - b.page);
     const courseQuestions = questions.filter(q => q.courseName === selectedCourse?.name);
 
     return (
@@ -574,21 +651,43 @@ export default function Home() {
         <div className="relative z-10 flex-1 flex flex-col" style={{ minHeight: '100vh' }}>
           <header className="text-center pt-4 pb-3 px-4">
             <div className="mb-3">
-              <div className="animate-float" style={{ width: 80, height: 80, margin: '0 auto', background: 'linear-gradient(135deg, #f5c542, #ffd700)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 40 }}>📖</div>
+              <div className="animate-float" style={{
+                width: 80, height: 80, margin: '0 auto',
+                background: 'linear-gradient(135deg, #f5c542, #ffd700)',
+                borderRadius: '50%', display: 'flex', alignItems: 'center',
+                justifyContent: 'center', fontSize: 40
+              }}>📖</div>
             </div>
-            <h1 className="text-2xl md:text-4xl font-black mb-3 title-golden text-gradient text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>منشئ اختبارات القرآن الكريم</h1>
-            <p className="text-glow-gold text-sm md:text-lg text-elegant font-bold">اختر الدورة، أضف الأسئلة يدوياً، ثم اضغط توليد</p>
+            <h1 className="text-2xl md:text-4xl font-black mb-3 title-golden text-gradient text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
+              منشئ اختبارات القرآن الكريم
+            </h1>
+            <p className="text-glow-gold text-sm md:text-lg text-elegant font-bold">
+              اختر الدورة، أضف الأسئلة يدوياً، ثم اضغط توليد
+            </p>
             {!quranDataLoaded && (
-              <div style={{ marginTop: 8, background: 'rgba(245, 197, 66, 0.15)', border: '1px solid rgba(245, 197, 66, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
+              <div style={{
+                marginTop: 8,
+                background: 'rgba(245, 197, 66, 0.15)',
+                border: '1px solid rgba(245, 197, 66, 0.3)',
+                borderRadius: 8, padding: '6px 16px', display: 'inline-block'
+              }}>
                 <span style={{ color: '#f5c542', fontSize: 14 }}>⏳ جاري تحميل بيانات القرآن...</span>
               </div>
             )}
             {quranDataLoaded && (
               <div style={{ marginTop: 8, display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <div style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  borderRadius: 8, padding: '6px 16px', display: 'inline-block'
+                }}>
                   <span style={{ color: '#22c55e', fontSize: 14 }}>✅ تم تحميل جميع السور ({Object.keys(surahCache).length} سورة)</span>
                 </div>
-                <div style={{ background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', borderRadius: 8, padding: '6px 16px', display: 'inline-block' }}>
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.15)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  borderRadius: 8, padding: '6px 16px', display: 'inline-block'
+                }}>
                   <span style={{ color: '#22c55e', fontSize: 14 }}>📖 صفحات المصحف محفوظة محلياً</span>
                 </div>
               </div>
@@ -596,18 +695,23 @@ export default function Home() {
           </header>
 
           <main className="flex-1 max-w-6xl mx-auto w-full px-4 pb-6">
+            {/* اختيار الدورة */}
             <div className="card-glass mb-4">
               <div className="border-b p-4" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
                 <h2 className="text-2xl font-black flex items-center gap-3 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
-                  <span className="text-3xl">📚</span><span className="text-gradient title-golden">اختر الدورة</span>
+                  <span className="text-3xl">📚</span>
+                  <span className="text-gradient title-golden">اختر الدورة</span>
                 </h2>
               </div>
               <div className="p-4">
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                   {COURSES_DATA.map((course) => (
-                    <button key={course.name} onClick={() => handleCourseSelect(course)}
+                    <button
+                      key={course.name}
+                      onClick={() => handleCourseSelect(course)}
                       className={`${selectedCourse?.name === course.name ? 'btn-crimson-active' : 'btn-crimson-inactive'} ${flashCourse === course.name ? 'btn-gold-flash' : ''}`}
-                      style={selectedCourse?.name === course.name ? { transform: 'scale(1.05)' } : {}}>
+                      style={selectedCourse?.name === course.name ? { transform: 'scale(1.05)' } : {}}
+                    >
                       <span className="text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>{course.name}</span>
                     </button>
                   ))}
@@ -615,33 +719,61 @@ export default function Home() {
               </div>
             </div>
 
+            {/* زر عرض جميع النتائج */}
             <div className="flex justify-center mb-3">
-              <button onClick={() => navigateTo('allResults')} style={{ background: 'linear-gradient(45deg, #1f5eff, #245dff)', border: 'none', padding: '12px 24px', borderRadius: 24, fontSize: 16, fontWeight: 700, color: '#ffffff', cursor: 'pointer', boxShadow: '0 8px 25px rgba(37, 99, 255, 0.4)' }}>📜 عرض جميع النتائج</button>
+              <button
+                onClick={() => navigateTo('allResults')}
+                style={{
+                  background: 'linear-gradient(45deg, #1f5eff, #245dff)',
+                  border: 'none', padding: '12px 24px', borderRadius: 24,
+                  fontSize: 16, fontWeight: 700, color: '#ffffff', cursor: 'pointer',
+                  boxShadow: '0 8px 25px rgba(37, 99, 255, 0.4)'
+                }}
+              >
+                📜 عرض جميع النتائج
+              </button>
             </div>
 
+            {/* رصيد المصمم */}
             <div style={{ textAlign: 'center', padding: '20px 0 10px 0', marginTop: 8 }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(8, 20, 43, 0.5)', border: '1px solid rgba(255, 215, 0, 0.2)', borderRadius: 16, padding: '12px 28px' }}>
+              <div style={{
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+                background: 'rgba(8, 20, 43, 0.5)',
+                border: '1px solid rgba(255, 215, 0, 0.2)',
+                borderRadius: 16, padding: '12px 28px'
+              }}>
                 <span className="designer-credit-sparkle" style={{ fontSize: 20 }}>✦</span>
                 <span className="designer-credit" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif", fontSize: 22, direction: 'rtl' }}>أبوعبدالملك AR</span>
                 <span className="designer-credit-sparkle" style={{ fontSize: 20, animationDelay: '0.5s' }}>✦</span>
               </div>
             </div>
 
+            {/* اختيار السورة وعرض الآيات */}
             {selectedCourse && (
               <div className="grid lg:grid-cols-3 gap-4">
+                {/* قائمة السور */}
                 <div className="card-glass">
                   <div className="border-b p-3" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
                     <h2 className="text-xl font-black flex items-center gap-2 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
-                      <span className="text-2xl">📖</span><span className="text-gradient">اختر السورة</span>
+                      <span className="text-2xl">📖</span>
+                      <span className="text-gradient">اختر السورة</span>
                     </h2>
-                    <p className="text-xs font-medium text-glow-gold" style={{ color: '#fff5cc' }}>نطاق الصفحات: {selectedCourse.pageStart} - {selectedCourse.pageEnd}</p>
+                    <p className="text-xs font-medium text-glow-gold" style={{ color: '#fff5cc' }}>
+                      نطاق الصفحات: {selectedCourse.pageStart} - {selectedCourse.pageEnd}
+                    </p>
                   </div>
                   <div className="p-3">
                     <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto custom-scrollbar">
                       {courseSurahs.map((surah) => (
-                        <button key={surah} onClick={() => handleSurahSelect(surah)}
+                        <button
+                          key={surah}
+                          onClick={() => handleSurahSelect(surah)}
                           className={`${selectedSurah === surah ? 'btn-crimson-active' : 'btn-crimson-inactive'} ${flashSurah === surah ? 'btn-gold-flash' : ''}`}
-                          style={{ ...(selectedSurah === surah ? { transform: 'scale(1.05)' } : {}), padding: 10, fontSize: 12, height: 40, fontWeight: 700 }}>
+                          style={{
+                            ...(selectedSurah === surah ? { transform: 'scale(1.05)' } : {}),
+                            padding: 10, fontSize: 12, height: 40, fontWeight: 700
+                          }}
+                        >
                           {surah}
                         </button>
                       ))}
@@ -649,18 +781,30 @@ export default function Home() {
                   </div>
                 </div>
 
+                {/* عرض الآيات */}
                 <div className="lg:col-span-2 space-y-4">
                   {selectedSurah && (
                     <div className="card-glass">
                       <div className="border-b p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(10, 22, 40, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
                         <div className="flex-1">
-                          <h2 className="text-xl font-black mb-1 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>سورة {selectedSurah}</h2>
+                          <h2 className="text-xl font-black mb-1 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
+                            سورة {selectedSurah}
+                          </h2>
                           <p className="text-xs font-medium text-glow-gold" style={{ color: '#fff5cc' }}>
                             نطاق الدورة: صفحة {selectedCourse.pageStart} - {selectedCourse.pageEnd}
                             {surahData.length > 0 && <span> | عدد الآيات: {surahData.length}</span>}
                           </p>
                         </div>
-                        <button onClick={() => setSelection({ active: false, startIdx: null, endIdx: null })} style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', color: '#fff5cc', padding: '8px 16px', borderRadius: 8, cursor: 'pointer' }}>إلغاء التحديد</button>
+                        <button
+                          onClick={() => setSelection({ active: false, startIdx: null, endIdx: null })}
+                          style={{
+                            background: 'rgba(8, 20, 43, 0.72)',
+                            border: '2px solid rgba(245, 197, 66, 0.25)',
+                            color: '#fff5cc', padding: '8px 16px', borderRadius: 8, cursor: 'pointer'
+                          }}
+                        >
+                          إلغاء التحديد
+                        </button>
                       </div>
                       <div className="p-4">
                         {loading ? (
@@ -670,134 +814,228 @@ export default function Home() {
                           </div>
                         ) : (
                           <>
-                            <div className="flex items-center justify-between mb-3 p-3" style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12 }}>
-                              <span className="font-black text-sm flex items-center gap-2 text-glow-gold text-elegant"><span className="text-lg">📏</span>حجم الخط</span>
+                            {/* تحكم بحجم الخط */}
+                            <div className="flex items-center justify-between mb-3 p-3" style={{
+                              background: 'rgba(8, 20, 43, 0.72)',
+                              border: '2px solid rgba(245, 197, 66, 0.25)',
+                              borderRadius: 12
+                            }}>
+                              <span className="font-black text-sm flex items-center gap-2 text-glow-gold text-elegant">
+                                <span className="text-lg">📏</span>حجم الخط
+                              </span>
                               <div className="flex items-center gap-2">
-                                <button onClick={() => setVerseFontSize(prev => Math.max(14, prev - 2))} style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', color: '#fff5cc', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>-</button>
-                                <span style={{ fontWeight: 'bold', fontSize: 18, color: '#fff5cc', padding: '8px 16px' }}>{verseFontSize}</span>
-                                <button onClick={() => setVerseFontSize(prev => Math.min(36, prev + 2))} style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', color: '#fff5cc', width: 32, height: 32, borderRadius: 8, cursor: 'pointer', fontWeight: 'bold' }}>+</button>
+                                <button
+                                  onClick={() => setVerseFontSize(prev => Math.max(14, prev - 2))}
+                                  style={{
+                                    background: 'rgba(8, 20, 43, 0.72)',
+                                    border: '2px solid rgba(245, 197, 66, 0.25)',
+                                    color: '#fff5cc', width: 32, height: 32, borderRadius: 8,
+                                    cursor: 'pointer', fontWeight: 'bold'
+                                  }}
+                                >-</button>
+                                <span style={{ fontWeight: 'bold', fontSize: 18, color: '#fff5cc', padding: '8px 16px' }}>
+                                  {verseFontSize}
+                                </span>
+                                <button
+                                  onClick={() => setVerseFontSize(prev => Math.min(36, prev + 2))}
+                                  style={{
+                                    background: 'rgba(8, 20, 43, 0.72)',
+                                    border: '2px solid rgba(245, 197, 66, 0.25)',
+                                    color: '#fff5cc', width: 32, height: 32, borderRadius: 8,
+                                    cursor: 'pointer', fontWeight: 'bold'
+                                  }}
+                                >+</button>
                               </div>
                             </div>
-                            <div className="custom-scrollbar" style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 16, maxHeight: 400, overflowY: 'auto' }}>
-                              <div className="leading-loose text-right" style={{ fontSize: verseFontSize + 'px', fontFamily: "'Traditional Arabic', 'Scheherazade New', Arial", direction: 'rtl' }}>
-                                {surahData.map((verse, index) => {
-                                  let hl: React.CSSProperties = {};
-                                  let ts: React.CSSProperties = { color: '#ffffff' };
-                                  if (selection.startIdx !== null && selection.endIdx !== null) {
-                                    const s = Math.min(selection.startIdx, selection.endIdx);
-                                    const e = Math.max(selection.startIdx, selection.endIdx);
-                                    if (index >= s && index <= e) { hl = { background: 'rgba(255, 215, 0, 0.6)' }; ts = { color: '#000000' }; }
-                                  } else if (selection.active && selection.startIdx === index) {
-                                    hl = { background: 'rgba(255, 215, 0, 0.8)', borderRadius: 4 };
-                                  }
+
+                            {/* عرض الآيات */}
+                            {surahData.length > 0 ? (
+                              <div style={{
+                                background: 'rgba(8, 20, 43, 0.72)',
+                                border: '2px solid rgba(245, 197, 66, 0.25)',
+                                borderRadius: 12, padding: '16px',
+                                maxHeight: '60vh', overflowY: 'auto',
+                                direction: 'rtl', lineHeight: 2.2
+                              }} className="custom-scrollbar">
+                                {surahData.map((verse, idx) => {
+                                  const isSelected = selection.active && selection.startIdx !== null &&
+                                    idx >= Math.min(selection.startIdx, selection.endIdx ?? selection.startIdx) &&
+                                    idx <= Math.max(selection.startIdx, selection.endIdx ?? selection.startIdx);
+                                  const isStart = selection.startIdx === idx;
                                   return (
-                                    <span key={index} onClick={() => handleVerseClick(index)} style={{ cursor: 'pointer', display: 'inline-block', padding: '6px', borderRadius: 4, transition: 'all 0.3s', ...hl, ...ts }}>
-                                      {verse.text}<span style={{ color: '#f5c542', fontSize: 16, fontWeight: 600, marginRight: 8 }}>({verse.numberInSurah})</span>
+                                    <span
+                                      key={idx}
+                                      onClick={() => handleVerseClick(idx)}
+                                      style={{
+                                        cursor: 'pointer',
+                                        fontSize: verseFontSize,
+                                        fontFamily: "'Amiri', serif",
+                                        background: isSelected
+                                          ? (isStart ? 'rgba(245, 197, 66, 0.4)' : 'rgba(245, 197, 66, 0.2)')
+                                          : 'transparent',
+                                        color: isSelected ? '#ffd700' : '#ffffff',
+                                        padding: '2px 4px',
+                                        borderRadius: 4,
+                                        transition: 'all 0.2s',
+                                        borderBottom: isSelected ? '2px solid #ffd700' : 'none',
+                                        display: 'inline',
+                                        hoverBackground: 'rgba(245, 197, 66, 0.1)'
+                                      }}
+                                    >
+                                      {verse.text}
+                                      <span style={{
+                                        fontSize: Math.max(12, verseFontSize - 8),
+                                        color: '#f5c542',
+                                        fontWeight: 700,
+                                        margin: '0 2px',
+                                        verticalAlign: 'super'
+                                      }}>﴿{verse.numberInSurah}﴾</span>
+                                      {' '}
                                     </span>
                                   );
                                 })}
                               </div>
-                              <p className="text-sm mt-4 text-glow-gold text-elegant" style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', padding: 12, borderRadius: 8 }}>💡 اضغط على بداية الموضع ثم نهايته. سيتم حفظ السؤال تلقائياً.</p>
-                            </div>
+                            ) : (
+                              <div className="text-center py-8 text-glow-gold text-elegant">
+                                <div style={{ fontSize: 40, marginBottom: 12 }}>📖</div>
+                                <div>{quranDataLoaded ? 'لا توجد بيانات لهذه السورة' : 'جاري تحميل بيانات القرآن...'}</div>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>
                     </div>
                   )}
 
-                  <div className="card-glass">
-                    <div className="border-b-2 p-4" style={{ background: 'rgba(10, 22, 40, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
-                      <h2 className="text-xl font-black flex items-center gap-2 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
-                        <span className="text-2xl">❓</span><span className="text-gradient">بنك الأسئلة</span>
-                      </h2>
-                    </div>
-                    <div className="p-4 space-y-3">
-                      <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', padding: 12, borderRadius: 8, fontSize: 14 }}>
-                        <div className="flex justify-between items-center text-glow-gold text-elegant" style={{ marginBottom: 4 }}><span>الدورة:</span><strong style={{ color: '#fff5cc' }}>{selectedCourse.name}</strong></div>
-                        <div className="flex justify-between items-center text-glow-gold text-elegant" style={{ marginBottom: 4 }}><span>نطاق الصفحات:</span><strong style={{ color: '#fff5cc' }}>{selectedCourse.pageStart} - {selectedCourse.pageEnd}</strong></div>
-                        <div className="flex justify-between items-center text-glow-gold text-elegant" style={{ marginBottom: 4 }}><span>نظام التوليد:</span><strong style={{ color: '#fff5cc' }}>{getGenerationRule(selectedCourse)}</strong></div>
-                        <div className="flex justify-between items-center text-glow-gold text-elegant"><span>الأسئلة المحفوظة:</span><strong style={{ color: '#fff5cc' }}>{courseQuestions.length}</strong></div>
+                  {/* قائمة الأسئلة */}
+                  {questions.length > 0 && (
+                    <div className="card-glass">
+                      <div className="border-b p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
+                        <div>
+                          <h2 className="text-xl font-black flex items-center gap-2 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
+                            <span className="text-2xl">📝</span>
+                            <span className="text-gradient">الأسئلة المضافة</span>
+                            <span className="badge">{questions.length}</span>
+                          </h2>
+                          {selectedCourse && (
+                            <p className="text-xs font-medium text-glow-gold mt-1">
+                              أسئلة الدورة: {courseQuestions.length} / {selectedCourse.questionCount} مطلوبة
+                              <span style={{ margin: '0 8px' }}>|</span>
+                              {getGenerationRule(selectedCourse)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={clearAllQuestions}
+                            style={{
+                              background: 'rgba(255, 107, 107, 0.15)',
+                              border: '2px solid rgba(255, 107, 107, 0.3)',
+                              color: '#ff6b6b', padding: '8px 16px', borderRadius: 8,
+                              cursor: 'pointer', fontWeight: 700, fontSize: 13
+                            }}
+                          >
+                            🗑️ مسح الكل
+                          </button>
+                          {selectedCourse && courseQuestions.length >= selectedCourse.questionCount && (
+                            <button
+                              onClick={generateFinalTest}
+                              disabled={generating}
+                              style={{
+                                background: generating
+                                  ? 'rgba(245, 197, 66, 0.3)'
+                                  : 'linear-gradient(45deg, #d4a017, #ffd700)',
+                                border: 'none', padding: '8px 20px', borderRadius: 8,
+                                color: generating ? '#fff5cc' : '#0a1628',
+                                fontWeight: 800, fontSize: 14, cursor: generating ? 'wait' : 'pointer',
+                                boxShadow: generating ? 'none' : '0 4px 15px rgba(255, 215, 0, 0.4)',
+                                minWidth: 140
+                              }}
+                            >
+                              {generating ? '⏳ جاري التوليد...' : '✨ توليد الاختبار'}
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <button onClick={generateFinalTest} disabled={generating} style={{ width: '100%', background: 'linear-gradient(90deg, #ffd700 0%, #b8860b 50%, #ffd700 100%)', color: '#0a1628', fontWeight: 900, border: '2px solid #ffd700', borderRadius: 12, padding: 16, fontSize: 18, cursor: generating ? 'not-allowed' : 'pointer', opacity: generating ? 0.5 : 1 }}>
-                        {generating ? '⏳ جاري التوليد...' : '🏆 توليد الأسئلة'}
-                      </button>
-                      <div style={{ maxHeight: 300, overflowY: 'auto' }} className="custom-scrollbar">
-                        {sortedQuestions.length === 0 ? (
-                          <p className="text-center text-glow-gold text-elegant" style={{ padding: 20 }}>لا توجد أسئلة محفوظة. اختر سورة وأضف أسئلة يدوياً.</p>
-                        ) : sortedQuestions.map((q, idx) => {
-                          const qPages = lookupQuestionPages(q, surahCache);
-                          return (
-                          <div key={q.surah + '-' + q.from + '-' + q.page + '-' + idx} onClick={() => handleQuestionPreview(q)} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 10, marginBottom: 8, cursor: 'pointer', transition: 'all 0.3s' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
-                              {/* صورة مصغرة للصفحة */}
-                              <div style={{
-                                width: 36,
-                                height: 52,
-                                borderRadius: 4,
-                                overflow: 'hidden',
-                                border: '1px solid rgba(245, 197, 66, 0.3)',
-                                flexShrink: 0,
-                                background: 'rgba(8, 20, 43, 0.9)',
-                              }}>
-                                <img
-                                  src={qPages.imagePaths[0]}
-                                  alt={`صفحة ${q.page}`}
-                                  loading="lazy"
-                                  style={{
-                                    width: '100%',
-                                    height: '100%',
-                                    objectFit: 'cover',
-                                  }}
-                                />
+                      <div className="p-4 max-h-96 overflow-y-auto custom-scrollbar">
+                        {questions.map((q, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              background: 'rgba(8, 20, 43, 0.72)',
+                              border: '1px solid rgba(245, 197, 66, 0.2)',
+                              borderRadius: 10, padding: '10px 14px',
+                              marginBottom: 8, display: 'flex',
+                              alignItems: 'center', justifyContent: 'space-between',
+                              gap: 8, flexWrap: 'wrap'
+                            }}
+                          >
+                            <div style={{ flex: 1 }}>
+                              <div style={{ color: '#fff5cc', fontSize: 14, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
+                                سورة {q.surah}
                               </div>
-                              <div style={{ minWidth: 0 }}>
-                                <strong style={{ color: '#fff5cc', fontFamily: "'Amiri', serif", fontSize: 13 }}>{q.surah}</strong>
-                                <div style={{ marginTop: 2 }}>
-                                  <span className="badge" style={{ fontSize: 10 }}>من {q.from} إلى {q.to}</span>
-                                  <span style={{ color: '#fff5cc', marginRight: 6, fontSize: 11 }}>صفحة {q.page} - جزء {q.juz}</span>
-                                </div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                                <span style={{
+                                  display: 'inline-block',
+                                  background: 'rgba(245, 197, 66, 0.15)',
+                                  color: '#ffd700', padding: '2px 8px',
+                                  borderRadius: 6, fontSize: 11, fontWeight: 700
+                                }}>من {q.from}</span>
+                                <span style={{
+                                  display: 'inline-block',
+                                  background: 'rgba(245, 197, 66, 0.15)',
+                                  color: '#ffd700', padding: '2px 8px',
+                                  borderRadius: 6, fontSize: 11, fontWeight: 700
+                                }}>إلى {q.to}</span>
+                                <span style={{
+                                  display: 'inline-block',
+                                  background: 'rgba(245, 197, 66, 0.15)',
+                                  color: '#ffd700', padding: '2px 8px',
+                                  borderRadius: 6, fontSize: 11, fontWeight: 700
+                                }}>صفحة {q.page}</span>
+                                <span style={{
+                                  display: 'inline-block',
+                                  background: 'rgba(139, 92, 246, 0.15)',
+                                  color: '#a78bfa', padding: '2px 8px',
+                                  borderRadius: 6, fontSize: 11, fontWeight: 700
+                                }}>جزء {q.juz}</span>
+                                <span style={{
+                                  display: 'inline-block',
+                                  background: 'rgba(34, 197, 94, 0.15)',
+                                  color: '#22c55e', padding: '2px 8px',
+                                  borderRadius: 6, fontSize: 11, fontWeight: 700
+                                }}>{q.courseName}</span>
                               </div>
                             </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                              <span style={{ color: '#f5c542', fontSize: 12, fontWeight: 700 }}>📖</span>
+                            <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  deleteQuestion(q);
+                                onClick={() => handleQuestionPreview(q)}
+                                style={{
+                                  background: 'rgba(245, 197, 66, 0.15)',
+                                  border: '1px solid rgba(245, 197, 66, 0.3)',
+                                  color: '#ffd700', padding: '6px 12px',
+                                  borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700
                                 }}
+                              >
+                                📄 معاينة الصفحة
+                              </button>
+                              <button
+                                onClick={() => deleteQuestion(q)}
                                 style={{
                                   background: 'rgba(255, 107, 107, 0.15)',
                                   border: '1px solid rgba(255, 107, 107, 0.3)',
-                                  color: '#ff6b6b',
-                                  width: 28,
-                                  height: 28,
-                                  borderRadius: 6,
-                                  cursor: 'pointer',
-                                  fontSize: 14,
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  transition: 'all 0.2s',
+                                  color: '#ff6b6b', padding: '6px 12px',
+                                  borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700
                                 }}
-                                onMouseEnter={(e) => {
-                                  (e.currentTarget as HTMLElement).style.background = 'rgba(255, 107, 107, 0.3)';
-                                }}
-                                onMouseLeave={(e) => {
-                                  (e.currentTarget as HTMLElement).style.background = 'rgba(255, 107, 107, 0.15)';
-                                }}
-                                title="حذف السؤال"
                               >
                                 🗑️
                               </button>
                             </div>
                           </div>
-                        ); })}
+                        ))}
                       </div>
-                      {sortedQuestions.length > 0 && (
-                        <button onClick={clearAllQuestions} style={{ width: '100%', background: 'linear-gradient(90deg, #ff6b6b, #ee5a5a)', color: '#ffffff', fontWeight: 900, border: '2px solid #ffd700', borderRadius: 12, padding: 12, fontSize: 16, cursor: 'pointer' }}>🗑️ مسح جميع الأسئلة</button>
-                      )}
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
             )}
@@ -808,41 +1046,102 @@ export default function Home() {
   };
 
   /* ═══════════════════════════════════════════════
-     عرض بيانات الطالب
+     عرض صفحة بيانات الطالب
      ═══════════════════════════════════════════════ */
 
   const renderStudentInfo = () => (
-    <div className="pattern-islamic" dir="rtl">
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
-        <BackButton />
-        <div className="card-glass">
-          <div className="border-b p-4" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
-            <h2 className="text-2xl font-black text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>📝 بيانات الطالب</h2>
-          </div>
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {[
-              { label: '👤 اسم الطالب', key: 'name' as const, required: true, type: 'text', placeholder: 'أدخل اسم الطالب' },
-              { label: '📅 تاريخ الميلاد', key: 'birthDate' as const, required: true, type: 'date', placeholder: '' },
-              { label: '📍 مكان الميلاد', key: 'birthPlace' as const, required: false, type: 'text', placeholder: 'أدخل مكان الميلاد' },
-              { label: '🏢 اسم المركز', key: 'center' as const, required: false, type: 'text', placeholder: 'أدخل اسم المركز' },
-              { label: '🎓 اسم المحفظ', key: 'teacher' as const, required: true, type: 'text', placeholder: 'أدخل اسم المحفظ' },
-              { label: '🏛️ المحافظة', key: 'governorate' as const, required: false, type: 'text', placeholder: 'أدخل المحافظة' }
-            ].map(field => (
-              <div key={field.key}>
-                <label style={{ display: 'block', color: '#fff5cc', fontWeight: 700, marginBottom: 8 }}>
-                  {field.label}{field.required && <span style={{ color: '#f87171' }}> *</span>}
-                </label>
+    <div className="pattern-islamic pattern-islamic-bg" dir="rtl" style={{ overflowX: 'hidden' }}>
+      <div className="relative z-10 flex-1 flex flex-col" style={{ minHeight: '100vh' }}>
+        <div className="max-w-lg mx-auto w-full px-4 py-6">
+          <BackButton label="عودة للرئيسية" />
+
+          <div className="card-glass">
+            <div className="border-b p-4" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
+              <h2 className="text-2xl font-black flex items-center gap-3 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
+                <span className="text-3xl">👤</span>
+                <span className="text-gradient title-golden">بيانات الطالب</span>
+              </h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label style={{ display: 'block', color: '#f5c542', fontWeight: 700, marginBottom: 6, fontSize: 14 }}>الاسم *</label>
                 <input
-                  type={field.type}
+                  type="text"
                   className="quran-input"
-                  value={studentInfo[field.key]}
-                  onChange={(e) => setStudentInfo(prev => ({ ...prev, [field.key]: e.target.value }))}
-                  placeholder={field.placeholder}
+                  placeholder="أدخل اسم الطالب"
+                  value={studentInfo.name}
+                  onChange={(e) => setStudentInfo(prev => ({ ...prev, name: e.target.value }))}
                 />
               </div>
-            ))}
-            <div style={{ gridColumn: '1 / -1', marginTop: 16 }}>
-              <button onClick={handleStartTest} style={{ width: '100%', background: 'linear-gradient(90deg, #ffd700 0%, #b8860b 50%, #ffd700 100%)', color: '#0a1628', fontWeight: 900, border: '2px solid #ffd700', borderRadius: 12, padding: 16, fontSize: 18, cursor: 'pointer' }}>🏆 بدء الاختبار</button>
+              <div>
+                <label style={{ display: 'block', color: '#f5c542', fontWeight: 700, marginBottom: 6, fontSize: 14 }}>تاريخ الميلاد *</label>
+                <input
+                  type="date"
+                  className="quran-input"
+                  value={studentInfo.birthDate}
+                  onChange={(e) => setStudentInfo(prev => ({ ...prev, birthDate: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#f5c542', fontWeight: 700, marginBottom: 6, fontSize: 14 }}>مكان الميلاد</label>
+                <input
+                  type="text"
+                  className="quran-input"
+                  placeholder="أدخل مكان الميلاد"
+                  value={studentInfo.birthPlace}
+                  onChange={(e) => setStudentInfo(prev => ({ ...prev, birthPlace: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#f5c542', fontWeight: 700, marginBottom: 6, fontSize: 14 }}>المركز</label>
+                <input
+                  type="text"
+                  className="quran-input"
+                  placeholder="أدخل اسم المركز"
+                  value={studentInfo.center}
+                  onChange={(e) => setStudentInfo(prev => ({ ...prev, center: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#f5c542', fontWeight: 700, marginBottom: 6, fontSize: 14 }}>المحفظ *</label>
+                <input
+                  type="text"
+                  className="quran-input"
+                  placeholder="أدخل اسم المحفظ"
+                  value={studentInfo.teacher}
+                  onChange={(e) => setStudentInfo(prev => ({ ...prev, teacher: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#f5c542', fontWeight: 700, marginBottom: 6, fontSize: 14 }}>المحافظة</label>
+                <input
+                  type="text"
+                  className="quran-input"
+                  placeholder="أدخل اسم المحافظة"
+                  value={studentInfo.governorate}
+                  onChange={(e) => setStudentInfo(prev => ({ ...prev, governorate: e.target.value }))}
+                />
+              </div>
+
+              <div style={{ marginTop: 8, padding: '10px 14px', background: 'rgba(8, 20, 43, 0.72)', border: '1px solid rgba(245, 197, 66, 0.2)', borderRadius: 10, textAlign: 'center' }}>
+                <span style={{ color: '#f5c542', fontSize: 13, fontWeight: 700 }}>
+                  📖 الدورة: {selectedCourse?.name} | عدد الأسئلة: {testQuestions.length}
+                </span>
+              </div>
+
+              <button
+                onClick={handleStartTest}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(45deg, #d4a017, #ffd700)',
+                  border: 'none', padding: '14px 24px', borderRadius: 12,
+                  color: '#0a1628', fontWeight: 800, fontSize: 18,
+                  cursor: 'pointer', boxShadow: '0 4px 15px rgba(255, 215, 0, 0.4)',
+                  marginTop: 8
+                }}
+              >
+                🚀 بدء الاختبار
+              </button>
             </div>
           </div>
         </div>
@@ -851,79 +1150,257 @@ export default function Home() {
   );
 
   /* ═══════════════════════════════════════════════
-     عرض الاختبار
+     عرض صفحة الاختبار
      ═══════════════════════════════════════════════ */
 
   const renderTest = () => {
+    if (testQuestions.length === 0) return null;
     const currentQ = testQuestions[currentQuestionIndex];
-    if (!currentQ) return null;
+    const totalDeductions = (errors.small * 0.5) + (errors.medium * 1) + (errors.position * 3) + errors.weakness;
+    const currentScore = Math.max(0, Math.round((100 - totalDeductions) * 10) / 10);
 
     return (
-      <div className="pattern-islamic" dir="rtl">
-        <div className="relative z-10 max-w-7xl mx-auto px-2 py-4">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(8, 20, 43, 0.95)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: '6px 10px', marginBottom: 8, gap: 8, flexWrap: 'wrap' }}>
-            <BackButton />
-            <h2 style={{ fontSize: 13, fontWeight: 700, color: '#fff5cc', textAlign: 'left', flex: 1 }}>{selectedCourse?.name} | سؤال {currentQuestionIndex + 1}/{testQuestions.length}</h2>
-          </div>
+      <div className="pattern-islamic pattern-islamic-bg" dir="rtl" style={{ overflowX: 'hidden' }}>
+        <div className="relative z-10 flex-1 flex flex-col" style={{ minHeight: '100vh' }}>
+          <div className="max-w-4xl mx-auto w-full px-4 py-4">
+            <BackButton label="عودة لبيانات الطالب" />
 
-          {/* الصفحات المصورة للقرآن - استدعاء تلقائي */}
-          <QuranPagesViewer key={`test-q-${currentQ.surah}-${currentQ.from}-${currentQ.to}-${currentQ.page}`} question={currentQ} surahCache={surahCache} />
-
-          <div style={{ background: 'rgba(8, 20, 43, 0.95)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 10, marginBottom: 8 }}>
-            <h3 style={{ color: '#fff5cc', fontWeight: 700, marginBottom: 8, textAlign: 'center', fontSize: 14 }}>اختر الأخطاء إذا وجدت:</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginBottom: 8 }}>
-              <button onClick={() => handleErrorClick('small', 0.5)} style={{ background: 'linear-gradient(180deg, #10224d, #09142e)', border: '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer', minHeight: 44 }}>❌ خطأ صغير (0.5)</button>
-              <button onClick={() => handleErrorClick('medium', 1)} style={{ background: 'linear-gradient(180deg, #10224d, #09142e)', border: '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer', minHeight: 44 }}>⚠️ خطأ متوسط (1)</button>
-              <button onClick={() => handleErrorClick('position', 3)} disabled={positionChangedQuestions.has(currentQuestionIndex)} style={{ background: positionChangedQuestions.has(currentQuestionIndex) ? 'rgba(8, 20, 43, 0.5)' : 'linear-gradient(180deg, #10224d, #09142e)', border: positionChangedQuestions.has(currentQuestionIndex) ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: positionChangedQuestions.has(currentQuestionIndex) ? 'rgba(255,255,255,0.3)' : '#ffffff', cursor: positionChangedQuestions.has(currentQuestionIndex) ? 'not-allowed' : 'pointer', minHeight: 44, opacity: positionChangedQuestions.has(currentQuestionIndex) ? 0.6 : 1, transition: 'all 0.2s ease' }}>{positionChangedQuestions.has(currentQuestionIndex) ? '🚫 تم تغيير الموضع' : '🔄 تغيير موضع (3)'}</button>
-              <button onClick={() => setShowWeaknessDialog(true)} style={{ background: 'linear-gradient(180deg, #10224d, #09142e)', border: '1px solid rgba(245, 197, 66, 0.25)', padding: 10, borderRadius: 10, fontSize: 13, fontWeight: 700, color: '#ffffff', cursor: 'pointer', minHeight: 44 }}>📉 ضعف التلاوة</button>
-            </div>
-
-            {showWeaknessDialog && (
-              <div style={{ background: 'rgba(8, 20, 43, 0.95)', border: '2px solid rgba(245, 197, 66, 0.5)', borderRadius: 12, padding: 12, marginBottom: 12 }}>
-                <h4 style={{ color: '#fff5cc', marginBottom: 8 }}>اختر درجة ضعف التلاوة:</h4>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {[1, 2, 3, 5, 10].map(v => (
-                    <button key={v} onClick={() => handleWeaknessClick(v)} style={{ background: '#ffd700', color: '#000', padding: '8px 16px', borderRadius: 8, fontWeight: 700, cursor: 'pointer' }}>{v} {v === 1 ? 'درجة' : 'درجات'}</button>
-                  ))}
+            {/* شريط التقدم والدرجة */}
+            <div style={{
+              background: 'rgba(8, 20, 43, 0.72)',
+              border: '2px solid rgba(245, 197, 66, 0.25)',
+              borderRadius: 12, padding: '12px 16px',
+              marginBottom: 16, display: 'flex',
+              justifyContent: 'space-between', alignItems: 'center',
+              flexWrap: 'wrap', gap: 8
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{ color: '#f5c542', fontWeight: 700, fontSize: 14 }}>
+                  السؤال {currentQuestionIndex + 1} من {testQuestions.length}
+                </span>
+                <div style={{
+                  width: 120, height: 8, background: 'rgba(245, 197, 66, 0.2)',
+                  borderRadius: 4, overflow: 'hidden'
+                }}>
+                  <div style={{
+                    width: ((currentQuestionIndex + 1) / testQuestions.length * 100) + '%',
+                    height: '100%', background: 'linear-gradient(90deg, #d4a017, #ffd700)',
+                    borderRadius: 4, transition: 'width 0.3s'
+                  }} />
                 </div>
               </div>
-            )}
-
-            <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '1px solid rgba(245, 197, 66, 0.15)', borderRadius: 8, padding: 6, marginBottom: 8, textAlign: 'center', fontSize: 12, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 4 }}>
-              <span style={{ color: '#fff5cc' }}>صغير: <strong style={{ color: '#f5c542' }}>{errors.small}</strong></span>
-              <span style={{ color: '#fff5cc' }}>متوسط: <strong style={{ color: '#f5c542' }}>{errors.medium}</strong></span>
-              <span style={{ color: '#fff5cc' }}>تغيير: <strong style={{ color: '#f5c542' }}>{errors.position}</strong></span>
-              <span style={{ color: '#fff5cc' }}>ضعف: <strong style={{ color: '#f5c542' }}>{errors.weakness}</strong></span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{ color: currentScore >= 75 ? '#22c55e' : '#ff6b6b', fontWeight: 800, fontSize: 16 }}>
+                  الدرجة: {currentScore}
+                </span>
+                <span style={{ color: '#ff6b6b', fontWeight: 700, fontSize: 13 }}>
+                  خصم: {totalDeductions}
+                </span>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button
-                onClick={() => setCurrentQuestionIndex(prev => prev - 1)}
-                disabled={currentQuestionIndex === 0}
-                style={{
-                  flex: 1,
-                  background: currentQuestionIndex === 0
-                    ? 'rgba(8, 20, 43, 0.5)'
-                    : 'linear-gradient(90deg, #b8860b 0%, #8B6914 50%, #b8860b 100%)',
-                  color: currentQuestionIndex === 0 ? 'rgba(255,255,255,0.3)' : '#0a1628',
-                  fontWeight: 900,
-                  border: currentQuestionIndex === 0
-                    ? '2px solid rgba(245, 197, 66, 0.15)'
-                    : '2px solid #ffd700',
-                  borderRadius: 12,
-                  padding: 12,
-                  fontSize: 16,
-                  cursor: currentQuestionIndex === 0 ? 'not-allowed' : 'pointer',
-                  minHeight: 48,
-                  opacity: currentQuestionIndex === 0 ? 0.5 : 1,
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                ← السؤال السابق
-              </button>
-              <button onClick={handleQuestionComplete} style={{ flex: 1, background: 'linear-gradient(90deg, #ffd700 0%, #b8860b 50%, #ffd700 100%)', color: '#0a1628', fontWeight: 900, border: '2px solid #ffd700', borderRadius: 12, padding: 12, fontSize: 16, cursor: 'pointer', minHeight: 48 }}>
-                ✓ {currentQuestionIndex === testQuestions.length - 1 ? 'عرض النتيجة' : 'السؤال التالي'}
-              </button>
+            {/* معلومات السؤال */}
+            <div style={{
+              background: 'rgba(8, 20, 43, 0.72)',
+              border: '2px solid rgba(245, 197, 66, 0.25)',
+              borderRadius: 12, padding: '12px 16px',
+              marginBottom: 12, textAlign: 'center'
+            }}>
+              <h3 style={{ color: '#fff5cc', fontSize: 18, fontWeight: 700, fontFamily: "'Amiri', serif", marginBottom: 4 }}>
+                سورة {currentQ.surah}
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)',
+                  color: '#ffd700', padding: '2px 10px', borderRadius: 6,
+                  fontSize: 13, fontWeight: 700
+                }}>من {currentQ.from}</span>
+                <span style={{
+                  display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)',
+                  color: '#ffd700', padding: '2px 10px', borderRadius: 6,
+                  fontSize: 13, fontWeight: 700
+                }}>إلى {currentQ.to}</span>
+                <span style={{
+                  display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)',
+                  color: '#ffd700', padding: '2px 10px', borderRadius: 6,
+                  fontSize: 13, fontWeight: 700
+                }}>صفحة {currentQ.page}</span>
+                <span style={{
+                  display: 'inline-block', background: 'rgba(139, 92, 246, 0.2)',
+                  color: '#a78bfa', padding: '2px 10px', borderRadius: 6,
+                  fontSize: 13, fontWeight: 700
+                }}>جزء {currentQ.juz}</span>
+              </div>
+            </div>
+
+            {/* عرض صورة الصفحة */}
+            <div style={{ marginBottom: 16 }}>
+              <QuranPagesViewer
+                question={currentQ}
+                surahCache={surahCache as Record<string, import('@/lib/quran-pages').QuranVerseData>}
+                compact={true}
+              />
+            </div>
+
+            {/* أزرار الأخطاء */}
+            <div className="card-glass">
+              <div className="border-b p-3" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
+                <h3 className="text-lg font-black flex items-center gap-2 text-glow-white-bright" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
+                  <span>🔴</span> تسجيل الأخطاء
+                </h3>
+              </div>
+              <div className="p-4">
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <button
+                    onClick={() => handleErrorClick('small', 0.5)}
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.2), rgba(245, 158, 11, 0.1))',
+                      border: '2px solid rgba(245, 158, 11, 0.4)',
+                      color: '#fbbf24', padding: '12px', borderRadius: 10,
+                      cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                      textAlign: 'center'
+                    }}
+                  >
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>⚠️</div>
+                    خطأ صغير
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>-0.5 درجة</div>
+                    <div style={{ fontSize: 11, marginTop: 2, color: '#fbbf24' }}>العدد: {errors.small}</div>
+                  </button>
+                  <button
+                    onClick={() => handleErrorClick('medium', 1)}
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1))',
+                      border: '2px solid rgba(239, 68, 68, 0.4)',
+                      color: '#f87171', padding: '12px', borderRadius: 10,
+                      cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                      textAlign: 'center'
+                    }}
+                  >
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>❌</div>
+                    خطأ متوسط
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>-1 درجة</div>
+                    <div style={{ fontSize: 11, marginTop: 2, color: '#f87171' }}>العدد: {errors.medium}</div>
+                  </button>
+                  <button
+                    onClick={() => handleErrorClick('position', 3)}
+                    style={{
+                      background: positionChangedQuestions.has(currentQuestionIndex)
+                        ? 'linear-gradient(180deg, rgba(100, 100, 100, 0.2), rgba(100, 100, 100, 0.1))'
+                        : 'linear-gradient(180deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.1))',
+                      border: positionChangedQuestions.has(currentQuestionIndex)
+                        ? '2px solid rgba(100, 100, 100, 0.4)'
+                        : '2px solid rgba(168, 85, 247, 0.4)',
+                      color: positionChangedQuestions.has(currentQuestionIndex) ? '#888' : '#c084fc',
+                      padding: '12px', borderRadius: 10,
+                      cursor: positionChangedQuestions.has(currentQuestionIndex) ? 'not-allowed' : 'pointer',
+                      fontWeight: 700, fontSize: 13, textAlign: 'center',
+                      opacity: positionChangedQuestions.has(currentQuestionIndex) ? 0.6 : 1
+                    }}
+                  >
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>🔄</div>
+                    تغيير موضع
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>-3 درجات</div>
+                    <div style={{ fontSize: 11, marginTop: 2 }}>
+                      {positionChangedQuestions.has(currentQuestionIndex) ? 'تم الاستخدام' : 'مرة واحدة'}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setShowWeaknessDialog(true)}
+                    style={{
+                      background: 'linear-gradient(180deg, rgba(236, 72, 153, 0.2), rgba(236, 72, 153, 0.1))',
+                      border: '2px solid rgba(236, 72, 153, 0.4)',
+                      color: '#f472b6', padding: '12px', borderRadius: 10,
+                      cursor: 'pointer', fontWeight: 700, fontSize: 13,
+                      textAlign: 'center'
+                    }}
+                  >
+                    <div style={{ fontSize: 20, marginBottom: 4 }}>📉</div>
+                    ضعف تلاوة
+                    <div style={{ fontSize: 11, opacity: 0.8 }}>1-5 درجات</div>
+                    <div style={{ fontSize: 11, marginTop: 2, color: '#f472b6' }}>الخصم: {errors.weakness}</div>
+                  </button>
+                </div>
+
+                {/* حوار ضعف التلاوة */}
+                {showWeaknessDialog && (
+                  <div style={{
+                    background: 'rgba(8, 20, 43, 0.95)',
+                    border: '2px solid rgba(236, 72, 153, 0.4)',
+                    borderRadius: 12, padding: '16px',
+                    marginBottom: 12, textAlign: 'center'
+                  }}>
+                    <p style={{ color: '#f472b6', fontWeight: 700, marginBottom: 12, fontSize: 14 }}>
+                      اختر درجة ضعف التلاوة:
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                      {[1, 2, 3, 4, 5].map(val => (
+                        <button
+                          key={val}
+                          onClick={() => handleWeaknessClick(val)}
+                          style={{
+                            background: 'rgba(236, 72, 153, 0.2)',
+                            border: '2px solid rgba(236, 72, 153, 0.4)',
+                            color: '#f472b6', padding: '8px 16px',
+                            borderRadius: 8, cursor: 'pointer',
+                            fontWeight: 700, fontSize: 16, minWidth: 44
+                          }}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                    </div>
+                    <button
+                      onClick={() => setShowWeaknessDialog(false)}
+                      style={{
+                        marginTop: 10, background: 'rgba(8, 20, 43, 0.72)',
+                        border: '1px solid rgba(245, 197, 66, 0.25)',
+                        color: '#fff5cc', padding: '6px 16px',
+                        borderRadius: 6, cursor: 'pointer', fontSize: 12
+                      }}
+                    >
+                      إلغاء
+                    </button>
+                  </div>
+                )}
+
+                {/* أزرار التنقل والإتمام */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handlePrevQuestion}
+                    disabled={currentQuestionIndex === 0}
+                    style={{
+                      flex: 1,
+                      background: currentQuestionIndex === 0 ? 'rgba(8, 20, 43, 0.5)' : 'rgba(8, 20, 43, 0.72)',
+                      border: '2px solid rgba(245, 197, 66, 0.25)',
+                      color: currentQuestionIndex === 0 ? '#666' : '#fff5cc',
+                      padding: '12px', borderRadius: 10,
+                      cursor: currentQuestionIndex === 0 ? 'not-allowed' : 'pointer',
+                      fontWeight: 700, fontSize: 14, textAlign: 'center'
+                    }}
+                  >
+                    ← السابق
+                  </button>
+                  <button
+                    onClick={handleQuestionComplete}
+                    style={{
+                      flex: 2,
+                      background: currentQuestionIndex === testQuestions.length - 1
+                        ? 'linear-gradient(45deg, #d4a017, #ffd700)'
+                        : 'linear-gradient(45deg, #22c55e, #16a34a)',
+                      border: 'none', padding: '12px',
+                      borderRadius: 10,
+                      color: currentQuestionIndex === testQuestions.length - 1 ? '#0a1628' : '#ffffff',
+                      fontWeight: 800, fontSize: 16,
+                      cursor: 'pointer', textAlign: 'center',
+                      boxShadow: currentQuestionIndex === testQuestions.length - 1
+                        ? '0 4px 15px rgba(255, 215, 0, 0.4)'
+                        : '0 4px 15px rgba(34, 197, 94, 0.4)'
+                    }}
+                  >
+                    {currentQuestionIndex === testQuestions.length - 1 ? '📊 إنهاء الاختبار' : '✅ تم'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -932,71 +1409,170 @@ export default function Home() {
   };
 
   /* ═══════════════════════════════════════════════
-     عرض النتائج
+     عرض صفحة النتائج
      ═══════════════════════════════════════════════ */
 
   const renderResults = () => {
     if (!testResult) return null;
-    const scoreTier = getScoreTier(testResult.finalScore);
+    const tier = getScoreTier(testResult.finalScore);
+    const isPassing = testResult.finalScore >= 75;
 
     return (
-      <div className="pattern-islamic" dir="rtl">
+      <div className="pattern-islamic pattern-islamic-bg" dir="rtl" style={{ overflowX: 'hidden' }}>
         {showFireworks && <FireworksCanvas />}
-        <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
-          <BackButton />
-          <div className="card-glass mb-4" style={{ borderColor: scoreTier.borderColor, borderWidth: 2 }}>
-            <div className="border-b p-8" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: scoreTier.borderColor }}>
-              <div style={{ textAlign: 'center' }}>
-                {scoreTier.tier !== 'fail' ? (
-                  <>
-                    <div style={{ fontSize: 80, marginBottom: 8, filter: scoreTier.tier === 'gold' ? 'drop-shadow(0 0 20px rgba(255,215,0,0.8))' : scoreTier.tier === 'silver' ? 'drop-shadow(0 0 20px rgba(192,192,192,0.8))' : 'drop-shadow(0 0 20px rgba(205,127,50,0.8))', animation: 'trophyBounce 1.5s ease-in-out infinite' }}>{scoreTier.cupEmoji}</div>
-                    <p style={{ color: scoreTier.color, fontSize: 22, fontWeight: 800, marginBottom: 8, textShadow: `0 0 10px ${scoreTier.color}80` }}>{scoreTier.label}</p>
-                  </>
-                ) : (
-                  <div style={{ fontSize: 60, marginBottom: 8, filter: 'grayscale(0.5)' }}>😔</div>
+        <div className="relative z-10 flex-1 flex flex-col" style={{ minHeight: '100vh' }}>
+          <div className="max-w-lg mx-auto w-full px-4 py-6">
+            <BackButton label="عودة" />
+
+            {/* بطاقة النتيجة الرئيسية */}
+            <div className="card-glass" style={{ borderColor: tier.borderColor, borderWidth: 3 }}>
+              {/* رأس النتيجة */}
+              <div style={{
+                background: tier.gradient,
+                padding: '24px 20px',
+                textAlign: 'center',
+                borderRadius: '14px 14px 0 0'
+              }}>
+                {isPassing && (
+                  <div style={{
+                    fontSize: 60,
+                    animation: 'trophyBounce 1.5s ease-in-out infinite',
+                    marginBottom: 8
+                  }}>
+                    {tier.cupEmoji}
+                  </div>
                 )}
-                <p style={{ color: '#fff5cc', marginBottom: 8, fontSize: 16 }}>الدرجة النهائية</p>
-                <p style={{ fontSize: 'clamp(40px, 12vw, 64px)', fontWeight: 900, background: scoreTier.gradient, backgroundSize: '200% auto', WebkitBackgroundClip: 'text', backgroundClip: 'text', WebkitTextFillColor: 'transparent', animation: 'goldenShimmer 3s linear infinite', fontFamily: "'Amiri', serif" }}>{testResult.finalScore}%</p>
-                {scoreTier.tier === 'fail' && (
-                  <div style={{ marginTop: 12, padding: '12px 24px', background: 'rgba(255,107,107,0.15)', border: '2px solid rgba(255,107,107,0.4)', borderRadius: 12, display: 'inline-block' }}>
-                    <p style={{ color: '#ff6b6b', fontSize: 28, fontWeight: 900, fontFamily: "'Amiri', 'Tajawal', serif" }}>حظاً أوفر</p>
+                <div style={{
+                  fontSize: 56,
+                  fontWeight: 900,
+                  color: '#0a1628',
+                  textShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                }}>
+                  {testResult.finalScore}
+                </div>
+                <div style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: 'rgba(10, 22, 40, 0.7)'
+                }}>
+                  من 100
+                </div>
+                {tier.label && (
+                  <div style={{
+                    fontSize: 22,
+                    fontWeight: 800,
+                    color: '#0a1628',
+                    marginTop: 8,
+                    textShadow: '0 1px 2px rgba(0,0,0,0.1)'
+                  }}>
+                    {tier.label} ✨
+                  </div>
+                )}
+                {!isPassing && (
+                  <div style={{
+                    fontSize: 22,
+                    fontWeight: 800,
+                    color: '#0a1628',
+                    marginTop: 8
+                  }}>
+                    لم يجتز ❌
                   </div>
                 )}
               </div>
-            </div>
-            <div className="p-6 space-y-4">
-              <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 16 }}>
-                <h3 style={{ color: '#fff5cc', fontWeight: 700, marginBottom: 12 }}>📚 الدورة</h3>
-                <p style={{ color: '#ffffff', fontSize: 18 }}>{testResult.courseName}</p>
-              </div>
-              <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 16 }}>
-                <h3 style={{ color: '#fff5cc', fontWeight: 700, marginBottom: 12 }}>🔴 الأخطاء</h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, marginTop: 12 }}>
-                  <div style={{ color: '#ffffff' }}>• خطأ صغير (0.5): <strong style={{ color: '#fff5cc' }}>{testResult.errors.small}</strong></div>
-                  <div style={{ color: '#ffffff' }}>• خطأ متوسط (1): <strong style={{ color: '#fff5cc' }}>{testResult.errors.medium}</strong></div>
-                  <div style={{ color: '#ffffff' }}>• تغيير الموضع (3): <strong style={{ color: '#fff5cc' }}>{testResult.errors.position}</strong></div>
-                  <div style={{ color: '#ffffff' }}>• ضعف التلاوة: <strong style={{ color: '#fff5cc' }}>{testResult.errors.weakness}</strong></div>
+
+              {/* تفاصيل الأخطاء */}
+              <div className="p-5 space-y-3">
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  padding: '8px 12px', background: 'rgba(8, 20, 43, 0.5)',
+                  borderRadius: 8
+                }}>
+                  <span style={{ color: '#fbbf24', fontWeight: 700 }}>⚠️ خطأ صغير ({testResult.errors.small})</span>
+                  <span style={{ color: '#ff6b6b', fontWeight: 700 }}>-{(testResult.errors.small * 0.5).toFixed(1)}</span>
                 </div>
-              </div>
-              <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: 16 }}>
-                <h3 style={{ color: '#fff5cc', fontWeight: 700, marginBottom: 12 }}>👤 بيانات الطالب</h3>
-                <div style={{ color: '#ffffff', lineHeight: 2 }}>
-                  <div>الاسم: <strong style={{ color: '#fff5cc' }}>{testResult.studentInfo.name}</strong></div>
-                  <div>المحفظ: <strong style={{ color: '#fff5cc' }}>{testResult.studentInfo.teacher}</strong></div>
-                  <div>التاريخ: <strong style={{ color: '#fff5cc' }}>{testResult.date}</strong></div>
-                  <div>الوقت: <strong style={{ color: '#fff5cc' }}>{testResult.time}</strong></div>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  padding: '8px 12px', background: 'rgba(8, 20, 43, 0.5)',
+                  borderRadius: 8
+                }}>
+                  <span style={{ color: '#f87171', fontWeight: 700 }}>❌ خطأ متوسط ({testResult.errors.medium})</span>
+                  <span style={{ color: '#ff6b6b', fontWeight: 700 }}>-{(testResult.errors.medium * 1).toFixed(1)}</span>
                 </div>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
-                <button onClick={shareOnWhatsApp} style={{ width: '100%', background: 'linear-gradient(90deg, #25D366, #128C7E)', color: '#ffffff', fontWeight: 900, border: '2px solid #25D366', borderRadius: 12, padding: 14, fontSize: 16, cursor: 'pointer', minHeight: 48 }}>📤 مشاركة على واتساب</button>
-                <button onClick={() => {
-                  if (confirm('هل أنت متأكد من حذف هذه النتيجة؟')) {
-                    const idx = allResults.findIndex(r => r.finalScore === testResult!.finalScore && r.date === testResult!.date && r.studentInfo.name === testResult!.studentInfo.name);
-                    if (idx !== -1) deleteResult(idx);
-                    setTestResult(null);
-                    goBack();
-                  }
-                }} style={{ width: '100%', background: 'linear-gradient(90deg, #ff6b6b, #ee5a5a)', color: '#ffffff', fontWeight: 900, border: '2px solid #ff6b6b', borderRadius: 12, padding: 14, fontSize: 16, cursor: 'pointer', minHeight: 48 }}>🗑️ حذف النتيجة</button>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  padding: '8px 12px', background: 'rgba(8, 20, 43, 0.5)',
+                  borderRadius: 8
+                }}>
+                  <span style={{ color: '#c084fc', fontWeight: 700 }}>🔄 تغيير موضع ({testResult.errors.position})</span>
+                  <span style={{ color: '#ff6b6b', fontWeight: 700 }}>-{(testResult.errors.position * 3).toFixed(1)}</span>
+                </div>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  padding: '8px 12px', background: 'rgba(8, 20, 43, 0.5)',
+                  borderRadius: 8
+                }}>
+                  <span style={{ color: '#f472b6', fontWeight: 700 }}>📉 ضعف تلاوة ({testResult.errors.weakness})</span>
+                  <span style={{ color: '#ff6b6b', fontWeight: 700 }}>-{testResult.errors.weakness.toFixed(1)}</span>
+                </div>
+
+                {/* معلومات الطالب */}
+                <div style={{
+                  background: 'rgba(8, 20, 43, 0.72)',
+                  border: '1px solid rgba(245, 197, 66, 0.2)',
+                  borderRadius: 10, padding: '12px 16px',
+                  marginTop: 8
+                }}>
+                  <h4 style={{ color: '#f5c542', fontWeight: 700, marginBottom: 8, fontSize: 14 }}>👤 بيانات الطالب</h4>
+                  <div style={{ fontSize: 13, lineHeight: 2, color: '#e0e0e0' }}>
+                    <div>الاسم: <strong style={{ color: '#fff5cc' }}>{testResult.studentInfo.name}</strong></div>
+                    {testResult.studentInfo.birthDate && <div>تاريخ الميلاد: <strong style={{ color: '#fff5cc' }}>{testResult.studentInfo.birthDate}</strong></div>}
+                    {testResult.studentInfo.teacher && <div>المحفظ: <strong style={{ color: '#fff5cc' }}>{testResult.studentInfo.teacher}</strong></div>}
+                    {testResult.studentInfo.center && <div>المركز: <strong style={{ color: '#fff5cc' }}>{testResult.studentInfo.center}</strong></div>}
+                    {testResult.studentInfo.governorate && <div>المحافظة: <strong style={{ color: '#fff5cc' }}>{testResult.studentInfo.governorate}</strong></div>}
+                  </div>
+                </div>
+
+                {/* معلومات الاختبار */}
+                <div style={{
+                  background: 'rgba(8, 20, 43, 0.72)',
+                  border: '1px solid rgba(245, 197, 66, 0.2)',
+                  borderRadius: 10, padding: '12px 16px'
+                }}>
+                  <div style={{ fontSize: 13, lineHeight: 2, color: '#e0e0e0' }}>
+                    <div>📖 الدورة: <strong style={{ color: '#fff5cc' }}>{testResult.courseName}</strong></div>
+                    <div>📅 التاريخ: <strong style={{ color: '#fff5cc' }}>{testResult.date}</strong></div>
+                    <div>🕐 الوقت: <strong style={{ color: '#fff5cc' }}>{testResult.time}</strong></div>
+                    <div>📝 عدد الأسئلة: <strong style={{ color: '#fff5cc' }}>{testResult.questions.length}</strong></div>
+                  </div>
+                </div>
+
+                {/* أزرار المشاركة */}
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={shareOnWhatsApp}
+                    style={{
+                      flex: 1,
+                      background: 'linear-gradient(45deg, #25d366, #128c7e)',
+                      border: 'none', padding: '14px 20px', borderRadius: 12,
+                      color: '#ffffff', fontWeight: 800, fontSize: 15,
+                      cursor: 'pointer', boxShadow: '0 4px 15px rgba(37, 211, 102, 0.4)'
+                    }}
+                  >
+                    📱 مشاركة عبر واتساب
+                  </button>
+                </div>
+                <button
+                  onClick={() => navigateTo('allResults')}
+                  style={{
+                    width: '100%',
+                    background: 'rgba(8, 20, 43, 0.72)',
+                    border: '2px solid rgba(245, 197, 66, 0.25)',
+                    color: '#fff5cc', padding: '12px', borderRadius: 10,
+                    cursor: 'pointer', fontWeight: 700, fontSize: 14
+                  }}
+                >
+                  📜 عرض جميع النتائج
+                </button>
               </div>
             </div>
           </div>
@@ -1006,46 +1582,151 @@ export default function Home() {
   };
 
   /* ═══════════════════════════════════════════════
-     عرض جميع النتائج
+     عرض صفحة جميع النتائج
      ═══════════════════════════════════════════════ */
 
   const renderAllResults = () => (
-    <div className="pattern-islamic" dir="rtl">
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
-        <BackButton />
-        <div className="card-glass">
-          <div className="border-b p-4" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
-            <h2 className="text-2xl font-black text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>📜 جميع النتائج</h2>
-          </div>
-          <div className="p-4 custom-scrollbar" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-            {allResults.length === 0 ? (
-              <p className="text-center text-glow-gold text-elegant" style={{ padding: 40 }}>لا توجد نتائج محفوظة بعد</p>
-            ) : allResults.map((result, index) => {
-              const resultTier = getScoreTier(result.finalScore);
-              return (
-                <div key={'result-' + index + '-' + result.date} style={{ background: 'rgba(8, 20, 43, 0.72)', border: `2px solid ${resultTier.borderColor}40`, borderRadius: 12, padding: 16, marginBottom: 12 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 12 }}>
-                    <div>
-                      <h3 style={{ color: '#fff5cc', fontWeight: 700, fontSize: 18, marginBottom: 4 }}>{result.studentInfo.name}</h3>
-                      <p style={{ color: '#ffffff', fontSize: 14 }}>{result.courseName} - {result.date}</p>
-                    </div>
-                    <div style={{ textAlign: 'center' }}>
-                      {resultTier.tier !== 'fail' && <div style={{ fontSize: 24, marginBottom: 2 }}>{resultTier.cupEmoji}</div>}
-                      <p style={{ fontSize: 24, fontWeight: 900, color: resultTier.color }}>{result.finalScore}%</p>
-                      {resultTier.tier === 'fail' && <p style={{ fontSize: 12, color: '#ff6b6b', fontWeight: 700 }}>حظاً أوفر</p>}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                    <button onClick={() => shareResultOnWhatsApp(result)} style={{ flex: 1, background: 'linear-gradient(90deg, #25D366, #128C7E)', color: '#ffffff', fontWeight: 700, border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>📤 مشاركة</button>
-                    <button onClick={() => deleteResult(index)} style={{ flex: 1, background: 'linear-gradient(90deg, #ff6b6b, #ee5a5a)', color: '#ffffff', fontWeight: 700, border: 'none', padding: '8px 16px', borderRadius: 8, cursor: 'pointer', fontSize: 14 }}>🗑️ حذف</button>
-                  </div>
+    <div className="pattern-islamic pattern-islamic-bg" dir="rtl" style={{ overflowX: 'hidden' }}>
+      <div className="relative z-10 flex-1 flex flex-col" style={{ minHeight: '100vh' }}>
+        <div className="max-w-2xl mx-auto w-full px-4 py-6">
+          <BackButton label="عودة للرئيسية" />
+
+          <div className="card-glass">
+            <div className="border-b p-4" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
+              <h2 className="text-2xl font-black flex items-center gap-3 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
+                <span className="text-3xl">📜</span>
+                <span className="text-gradient title-golden">جميع النتائج</span>
+                <span className="badge">{allResults.length}</span>
+              </h2>
+            </div>
+            <div className="p-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+              {allResults.length === 0 ? (
+                <div className="text-center py-8 text-glow-gold text-elegant">
+                  <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+                  <div>لا توجد نتائج محفوظة</div>
                 </div>
-              );
-            })}
+              ) : (
+                allResults.slice().reverse().map((result, revIdx) => {
+                  const originalIdx = allResults.length - 1 - revIdx;
+                  const tier = getScoreTier(result.finalScore);
+                  return (
+                    <div
+                      key={originalIdx}
+                      style={{
+                        background: 'rgba(8, 20, 43, 0.72)',
+                        border: `2px solid ${tier.borderColor}`,
+                        borderRadius: 12, padding: '14px 16px',
+                        marginBottom: 10, position: 'relative'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8, flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                            <span style={{
+                              background: tier.gradient,
+                              color: '#0a1628', padding: '4px 12px',
+                              borderRadius: 8, fontWeight: 800, fontSize: 16
+                            }}>
+                              {tier.cupEmoji} {result.finalScore}
+                            </span>
+                            <span style={{ color: '#fff5cc', fontWeight: 700, fontSize: 14 }}>
+                              {result.studentInfo.name}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', fontSize: 12, color: '#b0b0b0' }}>
+                            <span>📖 {result.courseName}</span>
+                            <span>📅 {result.date}</span>
+                            <span>🕐 {result.time}</span>
+                          </div>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                            {result.errors.small > 0 && (
+                              <span style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
+                                صغير: {result.errors.small}
+                              </span>
+                            )}
+                            {result.errors.medium > 0 && (
+                              <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#f87171', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
+                                متوسط: {result.errors.medium}
+                              </span>
+                            )}
+                            {result.errors.position > 0 && (
+                              <span style={{ background: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
+                                موضع: {result.errors.position}
+                              </span>
+                            )}
+                            {result.errors.weakness > 0 && (
+                              <span style={{ background: 'rgba(236, 72, 153, 0.15)', color: '#f472b6', padding: '2px 6px', borderRadius: 4, fontSize: 10 }}>
+                                ضعف: {result.errors.weakness}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                          <button
+                            onClick={() => shareResultOnWhatsApp(result)}
+                            style={{
+                              background: 'rgba(37, 211, 102, 0.15)',
+                              border: '1px solid rgba(37, 211, 102, 0.3)',
+                              color: '#25d366', padding: '6px 10px',
+                              borderRadius: 6, cursor: 'pointer', fontSize: 14
+                            }}
+                          >
+                            📱
+                          </button>
+                          <button
+                            onClick={() => deleteResult(originalIdx)}
+                            style={{
+                              background: 'rgba(255, 107, 107, 0.15)',
+                              border: '1px solid rgba(255, 107, 107, 0.3)',
+                              color: '#ff6b6b', padding: '6px 10px',
+                              borderRadius: 6, cursor: 'pointer', fontSize: 14
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
       </div>
     </div>
+  );
+
+  /* ═══════════════════════════════════════════════
+     عرض Toast الإشعارات
+     ═══════════════════════════════════════════════ */
+
+  const renderToasts = () => (
+    <div className="toast-container">
+      {toasts.map((toast) => (
+        <div key={toast.id} className={`toast ${toast.isError ? 'error' : ''}`}>
+          <div style={{ fontWeight: 700, color: toast.isError ? '#ff6b6b' : '#f5c542', fontSize: 14, marginBottom: 2 }}>
+            {toast.title}
+          </div>
+          <div style={{ color: '#e0e0e0', fontSize: 12 }}>
+            {toast.description}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  /* ═══════════════════════════════════════════════
+     معاينة الصفحة
+     ═══════════════════════════════════════════════ */
+
+  const renderPagePreview = () => (
+    <PagePreviewModal
+      question={previewQuestion as import('@/lib/quran-pages').QuranQuestion | null}
+      surahCache={surahCache as Record<string, import('@/lib/quran-pages').QuranVerseData>}
+      isOpen={showPagePreview}
+      onClose={closePagePreview}
+    />
   );
 
   /* ═══════════════════════════════════════════════
@@ -1054,27 +1735,13 @@ export default function Home() {
 
   return (
     <>
-      <div className="toast-container">
-        {toasts.map((toast) => (
-          <div key={toast.id} className={'toast' + (toast.isError ? ' error' : '')}>
-            <div className="text-glow-white-bright font-bold text-elegant" style={{ fontSize: 16 }}>{toast.title}</div>
-            <div className="text-glow-gold text-elegant" style={{ fontSize: 14, marginTop: 4 }}>{toast.description}</div>
-          </div>
-        ))}
-      </div>
+      {renderToasts()}
+      {renderPagePreview()}
       {viewMode === 'home' && renderHome()}
       {viewMode === 'studentInfo' && renderStudentInfo()}
       {viewMode === 'test' && renderTest()}
       {viewMode === 'results' && renderResults()}
       {viewMode === 'allResults' && renderAllResults()}
-
-      {/* نافذة معاينة صفحة المصحف */}
-      <PagePreviewModal
-        question={previewQuestion}
-        surahCache={surahCache}
-        isOpen={showPagePreview}
-        onClose={closePagePreview}
-      />
     </>
   );
 }
