@@ -51,7 +51,7 @@ export async function loadQuranData(
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const res = await fetch('/quran-data.json?XTransformPort=3002');
+        const res = await fetch('/quran-data.json');
         
         if (res.ok) {
           const data = await res.json() as QuranDataMap;
