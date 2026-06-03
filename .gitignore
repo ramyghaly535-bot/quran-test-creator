@@ -52,3 +52,29 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Android build
+android/
+android-icons/
+
+# Backups
+backups/
+
+# APK files (too large for GitHub)
+*.apk
+
+# Download directory
+download/
+
+# Screenshots
+*.png
+!public/icon-*.png
+!public/apple-touch-icon.png
+!public/app-icon-1024.png
+!public/quran-pages/*.png
+
+# Agent context
+agent-ctx/
+
+# Examples
+examples/
