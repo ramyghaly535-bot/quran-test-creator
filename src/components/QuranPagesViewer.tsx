@@ -145,11 +145,11 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
         }}>
           <div style={{ flex: 1, textAlign: 'center' }}>
             <h3 style={{ color: '#fff5cc', fontSize: 13, marginBottom: 2, fontFamily: "'Amiri', serif" }}>
-              سورة {question.surah}
+              سورة {question.surah}{question.endSurah && question.endSurah !== question.surah ? ' ← ' + question.endSurah : ''}
             </h3>
             <p style={{ color: '#ffffff', fontSize: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>من {question.from}</span>
-              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>إلى {question.to}</span>
+              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>من {question.from}{question.endSurah && question.endSurah !== question.surah ? ' ' + question.surah : ''}</span>
+              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '1px 6px', borderRadius: 4, fontSize: 10, fontWeight: 700 }}>إلى {question.to}{question.endSurah && question.endSurah !== question.surah ? ' ' + question.endSurah : ''}</span>
               <span style={{ color: '#f5c542', fontWeight: 700, fontSize: 10 }}>صفحة {pageResult.pages.join('-')}</span>
             </p>
           </div>
@@ -172,10 +172,10 @@ export default function QuranPagesViewer({ question, surahCache, compact = false
   return (
     <div style={{ width: '100%' }} key={questionKey}>
       <div style={{ background: 'rgba(8, 20, 43, 0.72)', border: '2px solid rgba(245, 197, 66, 0.25)', borderRadius: 12, padding: '10px 16px', marginBottom: 8, textAlign: 'center' }}>
-        <h3 style={{ color: '#fff5cc', fontSize: 16, marginBottom: 4, fontFamily: "'Amiri', serif" }}>سورة {question.surah}</h3>
+        <h3 style={{ color: '#fff5cc', fontSize: 16, marginBottom: 4, fontFamily: "'Amiri', serif" }}>سورة {question.surah}{question.endSurah && question.endSurah !== question.surah ? ' ← ' + question.endSurah : ''}</h3>
         <p style={{ color: '#ffffff', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>من {question.from}</span>
-          <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>إلى {question.to}</span>
+          <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>من {question.from}{question.endSurah && question.endSurah !== question.surah ? ' ' + question.surah : ''}</span>
+          <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 12, fontWeight: 700 }}>إلى {question.to}{question.endSurah && question.endSurah !== question.surah ? ' ' + question.endSurah : ''}</span>
           <span style={{ color: '#f5c542', fontWeight: 700 }}>صفحة {pageResult.pages.join('-')}</span>
         </p>
       </div>

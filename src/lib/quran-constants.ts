@@ -56,6 +56,7 @@ export interface CourseData {
 
 export interface Question {
   surah: string;
+  endSurah?: string; // اسم السورة النهائية إذا اختلف عن السورة الأولى
   from: number;
   to: number;
   page: number;

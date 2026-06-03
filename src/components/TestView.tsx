@@ -65,11 +65,11 @@ export default function TestView() {
             marginBottom: 12, textAlign: 'center'
           }}>
             <h3 style={{ color: '#fff5cc', fontSize: 18, fontWeight: 700, fontFamily: "'Amiri', serif", marginBottom: 4 }}>
-              سورة {currentQ.surah}
+              سورة {currentQ.surah}{currentQ.endSurah && currentQ.endSurah !== currentQ.surah ? ' ← ' + currentQ.endSurah : ''}
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>من {currentQ.from}</span>
-              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>إلى {currentQ.to}</span>
+              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>من {currentQ.from}{currentQ.endSurah && currentQ.endSurah !== currentQ.surah ? ' ' + currentQ.surah : ''}</span>
+              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>إلى {currentQ.to}{currentQ.endSurah && currentQ.endSurah !== currentQ.surah ? ' ' + currentQ.endSurah : ''}</span>
               <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>صفحة {currentQ.page}</span>
               <span style={{ display: 'inline-block', background: 'rgba(139, 92, 246, 0.2)', color: '#a78bfa', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>جزء {currentQ.juz}</span>
             </div>

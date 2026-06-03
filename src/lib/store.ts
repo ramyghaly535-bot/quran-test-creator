@@ -36,7 +36,7 @@ interface QuranStore {
 
   /* --- الأسئلة --- */
   questions: Question[];
-  selection: { active: boolean; startIdx: number | null; endIdx: number | null };
+  selection: { active: boolean; startIdx: number | null; endIdx: number | null; startSurah: string | null; startSurahData: QuranVerse[] | null };
   verseFontSize: number;
 
   /* --- الاختبار --- */
@@ -121,7 +121,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
 
   /* --- الأسئلة --- */
   questions: [],
-  selection: { active: false, startIdx: null, endIdx: null },
+  selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
   verseFontSize: 20,
 
   /* --- الاختبار --- */
@@ -172,31 +172,42 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       courseSurahs: SURAH_NAMES.slice(startIdx, endIdx + 1),
       selectedSurah: '',
       surahData: [],
-      selection: { active: false, startIdx: null, endIdx: null },
+      selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
     });
     showToast('تم تحميل الدورة', course.name);
   },
 
   handleSurahSelect: (surahName) => {
-    const { showToast, surahCache, quranDataLoaded } = get();
+    const { showToast, surahCache, quranDataLoaded, selection } = get();
     set({ flashSurah: surahName });
     setTimeout(() => set({ flashSurah: null }), 800);
 
     const cached = surahCache[surahName];
     if (cached && cached.length > 0) {
-      set({
-        selectedSurah: surahName,
-        surahData: cached as unknown as QuranVerse[],
-        loading: false,
-        selection: { active: false, startIdx: null, endIdx: null },
-      });
-      showToast('تم تحميل السورة', surahName + ' (' + cached.length + ' آية)');
+      // إذا كان التحديد نشطاً (تم تحديد البداية)، نحافظ عليه ونسمح باختيار النهاية من سورة أخرى
+      if (selection.active && selection.startIdx !== null) {
+        set({
+          selectedSurah: surahName,
+          surahData: cached as unknown as QuranVerse[],
+          loading: false,
+          // نحافظ على حالة التحديد - لا نصفّرها
+        });
+        showToast('اختر نهاية الموضع', 'من سورة ' + surahName);
+      } else {
+        set({
+          selectedSurah: surahName,
+          surahData: cached as unknown as QuranVerse[],
+          loading: false,
+          selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
+        });
+        showToast('تم تحميل السورة', surahName + ' (' + cached.length + ' آية)');
+      }
     } else {
       set({
         selectedSurah: surahName,
         surahData: [],
         loading: false,
-        selection: { active: false, startIdx: null, endIdx: null },
+        selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
       });
       showToast('تنبيه', !quranDataLoaded ? 'جاري تحميل بيانات القرآن' : 'لم يتم العثور على بيانات السورة', true);
     }
@@ -207,24 +218,59 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   handleVerseClick: (index) => {
     const { selection, surahData, selectedSurah, selectedCourse, showToast } = get();
     if (!selection.active) {
-      set({ selection: { active: true, startIdx: index, endIdx: null } });
-      showToast('تم تحديد البداية', 'اختر نهاية الموضع');
+      // أول ضغطة: تحديد البداية مع حفظ بيانات السورة
+      set({
+        selection: {
+          active: true,
+          startIdx: index,
+          endIdx: null,
+          startSurah: selectedSurah,
+          startSurahData: [...surahData],
+        },
+      });
+      showToast('تم تحديد البداية', 'اختر نهاية الموضع (يمكنك الانتقال لسورة أخرى)');
     } else {
-      const start = Math.min(selection.startIdx!, index);
-      const end = Math.max(selection.startIdx!, index);
-      const newQuestion: Question = {
-        surah: selectedSurah,
-        from: surahData[start].numberInSurah,
-        to: surahData[end].numberInSurah,
-        page: surahData[start].page,
-        courseName: selectedCourse?.name || "",
-        juz: getPageJuz(surahData[start].page),
-      };
-      set(prev => ({
-        questions: [...prev.questions, newQuestion],
-        selection: { active: false, startIdx: null, endIdx: null },
-      }));
-      showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
+      // ثاني ضغطة: تحديد النهاية
+      const startSurah = selection.startSurah || selectedSurah;
+      const startData = selection.startSurahData || surahData;
+      const isCrossSurah = startSurah !== selectedSurah;
+
+      if (isCrossSurah) {
+        // ═══ سؤال بين سورتين ═══
+        const startVerse = startData[selection.startIdx!];
+        const endVerse = surahData[index];
+        const newQuestion: Question = {
+          surah: startSurah,
+          endSurah: selectedSurah,
+          from: startVerse.numberInSurah,
+          to: endVerse.numberInSurah,
+          page: startVerse.page,
+          courseName: selectedCourse?.name || "",
+          juz: getPageJuz(startVerse.page),
+        };
+        set(prev => ({
+          questions: [...prev.questions, newQuestion],
+          selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
+        }));
+        showToast('تمت الإضافة', 'سورة ' + startSurah + ' ← ' + selectedSurah + ' صفحة ' + newQuestion.page);
+      } else {
+        // ═══ سؤال داخل سورة واحدة ═══
+        const start = Math.min(selection.startIdx!, index);
+        const end = Math.max(selection.startIdx!, index);
+        const newQuestion: Question = {
+          surah: selectedSurah,
+          from: surahData[start].numberInSurah,
+          to: surahData[end].numberInSurah,
+          page: surahData[start].page,
+          courseName: selectedCourse?.name || "",
+          juz: getPageJuz(surahData[start].page),
+        };
+        set(prev => ({
+          questions: [...prev.questions, newQuestion],
+          selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
+        }));
+        showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
+      }
     }
   },
 
@@ -252,7 +298,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   },
 
   cancelSelection: () => {
-    set({ selection: { active: false, startIdx: null, endIdx: null } });
+    set({ selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null } });
   },
 
   setVerseFontSize: (size) => {

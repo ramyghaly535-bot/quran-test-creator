@@ -177,6 +177,18 @@ export default function HomeView() {
                         إلغاء التحديد
                       </button>
                     </div>
+                    {selection.active && selection.startIdx !== null && (
+                      <div style={{
+                        background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.2), rgba(245, 197, 66, 0.15))',
+                        border: '1px solid rgba(245, 197, 66, 0.4)',
+                        borderRadius: 8, padding: '8px 16px', margin: '8px 16px',
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        fontSize: 13, fontWeight: 700, color: '#ffd700'
+                      }}>
+                        <span>📍</span>
+                        <span>تم تحديد البداية في سورة {selection.startSurah || selectedSurah} - اختر النهاية هنا أو انتقل لسورة أخرى</span>
+                      </div>
+                    )}
                     <div className="p-4">
                       {loading ? (
                         <div className="text-center py-8 text-glow-gold text-elegant">
@@ -328,11 +340,11 @@ export default function HomeView() {
                         }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ color: '#fff5cc', fontSize: 14, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
-                              سورة {q.surah}
+                              سورة {q.surah}{q.endSurah && q.endSurah !== q.surah ? ' ← ' + q.endSurah : ''}
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>من {q.from}</span>
-                              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>إلى {q.to}</span>
+                              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>من {q.from}{q.endSurah && q.endSurah !== q.surah ? ' ' + q.surah : ''}</span>
+                              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>إلى {q.to}{q.endSurah && q.endSurah !== q.surah ? ' ' + q.endSurah : ''}</span>
                               <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>صفحة {q.page}</span>
                               <span style={{ display: 'inline-block', background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>جزء {q.juz}</span>
                               <span style={{ display: 'inline-block', background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{q.courseName}</span>
