@@ -8,7 +8,7 @@ import type { QuranVerseData } from '@/lib/quran-pages';
 import {
   type ViewMode, type CourseData, type Question, type QuranVerse,
   type StudentInfo, type TestErrors, type TestResult,
-  SURAH_NAMES, SURAH_JUZ, getPageJuz, getJuzZonePageRange, getZoneLabel,
+  SURAH_NAMES, SURAH_JUZ, getPageJuz, getJuzZonePageRange, getZoneLabel, getNextSurah,
 } from './quran-constants';
 
 interface ToastItem {
@@ -68,6 +68,7 @@ interface QuranStore {
   handleCourseSelect: (course: CourseData) => void;
   handleSurahSelect: (surahName: string) => void;
   handleVerseClick: (index: number) => void;
+  handleCrossSurahEnd: (endSurahName: string, endVerseIndex: number, endSurahData: QuranVerse[]) => void;
   deleteQuestion: (q: Question) => void;
   clearAllQuestions: () => void;
   handleQuestionPreview: (q: Question) => void;
@@ -272,6 +273,33 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
         showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
       }
     }
+  },
+
+  /* إتمام سؤال عابر لسورتين مباشرة (من عرض الآيات المدمج) */
+  handleCrossSurahEnd: (endSurahName, endVerseIndex, endSurahData) => {
+    const { selection, selectedCourse, showToast } = get();
+    if (!selection.active || selection.startIdx === null || !selection.startSurahData) {
+      showToast('تنبيه', 'لم يتم تحديد البداية بعد', true);
+      return;
+    }
+    const startVerse = selection.startSurahData[selection.startIdx];
+    const endVerse = endSurahData[endVerseIndex];
+    if (!startVerse || !endVerse) return;
+
+    const newQuestion: Question = {
+      surah: selection.startSurah!,
+      endSurah: endSurahName,
+      from: startVerse.numberInSurah,
+      to: endVerse.numberInSurah,
+      page: startVerse.page,
+      courseName: selectedCourse?.name || "",
+      juz: getPageJuz(startVerse.page),
+    };
+    set(prev => ({
+      questions: [...prev.questions, newQuestion],
+      selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
+    }));
+    showToast('تمت الإضافة', 'سورة ' + selection.startSurah + ' ← ' + endSurahName + ' صفحة ' + newQuestion.page);
   },
 
   deleteQuestion: (q) => {

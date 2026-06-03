@@ -126,6 +126,20 @@ export function getSurahJuz(surahName: string): number {
   return SURAH_JUZ[surahName] || 1;
 }
 
+/** الحصول على اسم السورة التالية مباشرة */
+export function getNextSurah(surahName: string): string | null {
+  const idx = SURAH_NAMES.indexOf(surahName);
+  if (idx < 0 || idx >= SURAH_NAMES.length - 1) return null;
+  return SURAH_NAMES[idx + 1];
+}
+
+/** الحصول على اسم السورة السابقة مباشرة */
+export function getPrevSurah(surahName: string): string | null {
+  const idx = SURAH_NAMES.indexOf(surahName);
+  if (idx <= 0) return null;
+  return SURAH_NAMES[idx - 1];
+}
+
 /* تحديد رقم الجزء من رقم الصفحة
    الجزء 1: صفحات 1-21 (21 صفحة)
    الجزء 2-29: كل جزء 20 صفحة

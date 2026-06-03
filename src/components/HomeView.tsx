@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useQuranStore } from '@/lib/store';
-import { COURSES_DATA, getGenerationRule } from '@/lib/quran-constants';
+import { COURSES_DATA, getGenerationRule, getNextSurah } from '@/lib/quran-constants';
 import QuranPagesViewer from '@/components/QuranPagesViewer';
 import PagePreviewModal from '@/components/PagePreviewModal';
 
@@ -13,12 +13,20 @@ export default function HomeView() {
     flashCourse, flashSurah, previewQuestion, showPagePreview,
     verseFontSize,
     handleCourseSelect, handleSurahSelect, handleVerseClick,
+    handleCrossSurahEnd,
     deleteQuestion, clearAllQuestions, generateFinalTest,
     handleQuestionPreview, closePagePreview, cancelSelection,
     setVerseFontSize, navigateTo, showToast,
   } = useQuranStore();
 
   const courseQuestions = questions.filter(q => q.courseName === selectedCourse?.name);
+
+  // تحديد السورة التالية عند التحديد النشط
+  const startSurahName = selection.active && selection.startSurah ? selection.startSurah : selectedSurah;
+  const nextSurahName = selection.active && startSurahName ? getNextSurah(startSurahName) : null;
+  const nextSurahData = nextSurahName ? (surahCache[nextSurahName] as unknown as typeof surahData || []) : [];
+  const isNextSurahInCourse = nextSurahName ? courseSurahs.includes(nextSurahName) : false;
+  const canShowNextSurah = selection.active && nextSurahName && isNextSurahInCourse && nextSurahData.length > 0;
 
   return (
     <div className="pattern-islamic pattern-islamic-bg" dir="rtl" style={{ overflowX: 'hidden' }}>
@@ -138,19 +146,43 @@ export default function HomeView() {
                 </div>
                 <div className="p-3">
                   <div className="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto custom-scrollbar">
-                    {courseSurahs.map((surah) => (
-                      <button
-                        key={surah}
-                        onClick={() => handleSurahSelect(surah)}
-                        className={`${selectedSurah === surah ? 'btn-crimson-active' : 'btn-crimson-inactive'} ${flashSurah === surah ? 'btn-gold-flash' : ''}`}
-                        style={{
-                          ...(selectedSurah === surah ? { transform: 'scale(1.05)' } : {}),
-                          padding: 10, fontSize: 12, height: 40, fontWeight: 700
-                        }}
-                      >
-                        {surah}
-                      </button>
-                    ))}
+                    {courseSurahs.map((surah) => {
+                      const isNextSurah = selection.active && surah === nextSurahName;
+                      const isStartSurah = selection.active && surah === startSurahName;
+                      return (
+                        <button
+                          key={surah}
+                          onClick={() => handleSurahSelect(surah)}
+                          className={`${selectedSurah === surah ? 'btn-crimson-active' : 'btn-crimson-inactive'} ${flashSurah === surah ? 'btn-gold-flash' : ''}`}
+                          style={{
+                            ...(selectedSurah === surah ? { transform: 'scale(1.05)' } : {}),
+                            ...(isNextSurah ? {
+                              background: 'rgba(103, 232, 249, 0.2)',
+                              border: '2px solid rgba(103, 232, 249, 0.6)',
+                              color: '#67e8f9',
+                              boxShadow: '0 0 12px rgba(103, 232, 249, 0.3)',
+                            } : {}),
+                            ...(isStartSurah && selectedSurah !== surah ? {
+                              background: 'rgba(245, 197, 66, 0.2)',
+                              border: '2px solid rgba(245, 197, 66, 0.5)',
+                              color: '#ffd700',
+                            } : {}),
+                            padding: 10, fontSize: 12, height: 40, fontWeight: 700,
+                            position: 'relative',
+                          }}
+                        >
+                          {surah}
+                          {isNextSurah && (
+                            <span style={{
+                              position: 'absolute', top: -2, left: -2,
+                              background: '#67e8f9', color: '#0a1628',
+                              fontSize: 8, fontWeight: 900, padding: '1px 4px',
+                              borderRadius: 4, lineHeight: '12px',
+                            }}>التالية</span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
@@ -183,10 +215,15 @@ export default function HomeView() {
                         border: '1px solid rgba(245, 197, 66, 0.4)',
                         borderRadius: 8, padding: '8px 16px', margin: '8px 16px',
                         display: 'flex', alignItems: 'center', gap: 8,
-                        fontSize: 13, fontWeight: 700, color: '#ffd700'
+                        fontSize: 13, fontWeight: 700, color: '#ffd700',
+                        flexWrap: 'wrap',
                       }}>
                         <span>📍</span>
-                        <span>تم تحديد البداية في سورة {selection.startSurah || selectedSurah} - اختر النهاية هنا أو انتقل لسورة أخرى</span>
+                        <span>تم تحديد البداية في سورة {selection.startSurah || selectedSurah}</span>
+                        <span style={{ color: '#67e8f9' }}>| اختر النهاية هنا</span>
+                        {canShowNextSurah && (
+                          <span style={{ color: '#67e8f9' }}>أو من آيات سورة {nextSurahName} أدناه</span>
+                        )}
                       </div>
                     )}
                     <div className="p-4">
@@ -280,6 +317,87 @@ export default function HomeView() {
                         </>
                       )}
                     </div>
+
+                    {/* عرض آيات السورة التالية عند التحديد النشط (سؤال عابر لسورتين) */}
+                    {canShowNextSurah && (
+                      <div style={{
+                        background: 'rgba(8, 20, 43, 0.85)',
+                        border: '2px solid rgba(103, 232, 249, 0.35)',
+                        borderRadius: 12, padding: '12px 16px',
+                        marginTop: 8,
+                      }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                          marginBottom: 10, flexWrap: 'wrap', gap: 8,
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 18 }}>🔗</span>
+                            <h3 style={{
+                              color: '#67e8f9', fontSize: 16, fontWeight: 800,
+                              fontFamily: "'Amiri', serif",
+                            }}>
+                              سورة {nextSurahName} (السورة التالية)
+                            </h3>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <span style={{
+                              width: 12, height: 12, borderRadius: 3,
+                              background: '#67e8f9', display: 'inline-block',
+                            }} />
+                            <span style={{ color: '#67e8f9', fontSize: 11, fontWeight: 700 }}>آيات السورة التالية</span>
+                          </div>
+                        </div>
+                        <div style={{
+                          background: 'rgba(103, 232, 249, 0.06)',
+                          border: '1px solid rgba(103, 232, 249, 0.2)',
+                          borderRadius: 8, padding: '12px',
+                          maxHeight: '35vh', overflowY: 'auto',
+                          direction: 'rtl', lineHeight: 2.2,
+                        }} className="custom-scrollbar">
+                          {nextSurahData.map((verse, idx) => (
+                            <span
+                              key={idx}
+                              onClick={() => handleCrossSurahEnd(nextSurahName!, idx, nextSurahData)}
+                              style={{
+                                cursor: 'pointer',
+                                fontSize: verseFontSize,
+                                fontFamily: "'Amiri', serif",
+                                background: 'rgba(103, 232, 249, 0.08)',
+                                color: '#67e8f9',
+                                padding: '2px 4px',
+                                borderRadius: 4,
+                                transition: 'all 0.2s',
+                                display: 'inline',
+                              }}
+                              onMouseEnter={(e) => {
+                                (e.target as HTMLElement).style.background = 'rgba(103, 232, 249, 0.25)';
+                                (e.target as HTMLElement).style.borderBottom = '2px solid #67e8f9';
+                              }}
+                              onMouseLeave={(e) => {
+                                (e.target as HTMLElement).style.background = 'rgba(103, 232, 249, 0.08)';
+                                (e.target as HTMLElement).style.borderBottom = 'none';
+                              }}
+                            >
+                              {verse.text}
+                              <span style={{
+                                fontSize: Math.max(12, verseFontSize - 8),
+                                color: '#a5f3fc',
+                                fontWeight: 700,
+                                margin: '0 2px',
+                                verticalAlign: 'super'
+                              }}>﴿{verse.numberInSurah}﴾</span>
+                              {' '}
+                            </span>
+                          ))}
+                        </div>
+                        <div style={{
+                          marginTop: 8, textAlign: 'center',
+                          color: '#67e8f9', fontSize: 11, fontWeight: 700, opacity: 0.8,
+                        }}>
+                          اضغط على أي آية لتحديد نهاية السؤال
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 

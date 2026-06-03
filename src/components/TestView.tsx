@@ -17,6 +17,7 @@ export default function TestView() {
 
   if (testQuestions.length === 0) return null;
   const currentQ = testQuestions[currentQuestionIndex];
+  const isCrossSurah = !!(currentQ.endSurah && currentQ.endSurah !== currentQ.surah);
   const totalDeductions = (errors.small * 0.5) + (errors.medium * 1) + (errors.position * 3) + errors.weakness;
   const currentScore = Math.max(0, Math.round((100 - totalDeductions) * 10) / 10);
 
@@ -60,22 +61,36 @@ export default function TestView() {
           {/* معلومات السؤال */}
           <div style={{
             background: 'rgba(8, 20, 43, 0.72)',
-            border: '2px solid rgba(245, 197, 66, 0.25)',
+            border: `2px solid ${isCrossSurah ? 'rgba(103, 232, 249, 0.35)' : 'rgba(245, 197, 66, 0.25)'}`,
             borderRadius: 12, padding: '12px 16px',
             marginBottom: 12, textAlign: 'center'
           }}>
-            <h3 style={{ color: '#fff5cc', fontSize: 18, fontWeight: 700, fontFamily: "'Amiri', serif", marginBottom: 4 }}>
-              سورة {currentQ.surah}{currentQ.endSurah && currentQ.endSurah !== currentQ.surah ? ' ← ' + currentQ.endSurah : ''}
+            <h3 style={{ color: isCrossSurah ? '#67e8f9' : '#fff5cc', fontSize: 18, fontWeight: 700, fontFamily: "'Amiri', serif", marginBottom: 4 }}>
+              سورة {currentQ.surah}{isCrossSurah ? ' ← ' + currentQ.endSurah : ''}
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, flexWrap: 'wrap' }}>
-              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>من {currentQ.from}{currentQ.endSurah && currentQ.endSurah !== currentQ.surah ? ' ' + currentQ.surah : ''}</span>
-              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>إلى {currentQ.to}{currentQ.endSurah && currentQ.endSurah !== currentQ.surah ? ' ' + currentQ.endSurah : ''}</span>
+              <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>من {currentQ.from}{isCrossSurah ? ' ' + currentQ.surah : ''}</span>
+              <span style={{ display: 'inline-block', background: isCrossSurah ? 'rgba(103, 232, 249, 0.2)' : 'rgba(245, 197, 66, 0.2)', color: isCrossSurah ? '#67e8f9' : '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>إلى {currentQ.to}{isCrossSurah ? ' ' + currentQ.endSurah : ''}</span>
               <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.2)', color: '#ffd700', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>صفحة {currentQ.page}</span>
               <span style={{ display: 'inline-block', background: 'rgba(139, 92, 246, 0.2)', color: '#a78bfa', padding: '2px 10px', borderRadius: 6, fontSize: 13, fontWeight: 700 }}>جزء {currentQ.juz}</span>
             </div>
+            {/* شارة السؤال العابر لسورتين */}
+            {isCrossSurah && (
+              <div style={{
+                marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: 'rgba(103, 232, 249, 0.12)',
+                border: '1px solid rgba(103, 232, 249, 0.3)',
+                borderRadius: 20, padding: '4px 14px',
+              }}>
+                <span style={{ fontSize: 14 }}>🔗</span>
+                <span style={{ color: '#67e8f9', fontSize: 12, fontWeight: 700, fontFamily: "'Amiri', serif" }}>
+                  سؤال عابر لسورتين
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* عرض صورة الصفحة */}
+          {/* عرض صورة الصفحة والآيات */}
           <div style={{ marginBottom: 16 }}>
             <QuranPagesViewer
               question={currentQ}
