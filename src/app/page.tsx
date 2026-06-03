@@ -7,6 +7,7 @@ import StudentInfoView from '@/components/StudentInfoView';
 import TestView from '@/components/TestView';
 import ResultsView from '@/components/ResultsView';
 import AllResultsView from '@/components/AllResultsView';
+import DownloadView from '@/components/DownloadView';
 import ToastContainer from '@/components/ToastContainer';
 
 export default function Home() {
@@ -43,6 +44,7 @@ export default function Home() {
       {viewMode === 'test' && <TestView />}
       {viewMode === 'results' && <ResultsView />}
       {viewMode === 'allResults' && <AllResultsView />}
+      {viewMode === 'download' && <DownloadView />}
       <ToastContainer />
     </>
   );

@@ -137,8 +137,31 @@ export default function HomeView() {
             </button>
           </div>
 
-          {/* رصيد المصمم */}
-          <div style={{ textAlign: 'center', padding: '20px 0 10px 0', marginTop: 8 }}>
+          {/* رصيد المصمم وزر التحميل */}
+          <div style={{ textAlign: 'center', padding: '20px 0 10px 0', marginTop: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+            <button
+              onClick={() => navigateTo('download')}
+              style={{
+                background: 'linear-gradient(135deg, #d4a017, #ffd700)',
+                border: 'none', padding: '12px 28px', borderRadius: 16,
+                fontSize: 15, fontWeight: 800, color: '#0a1628', cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(255, 215, 0, 0.3)',
+                fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif",
+                display: 'flex', alignItems: 'center', gap: 8,
+                transition: 'all 0.3s ease',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 20px rgba(255, 215, 0, 0.4)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 4px 15px rgba(255, 215, 0, 0.3)';
+              }}
+            >
+              <span style={{ fontSize: 20 }}>📱</span>
+              تحميل التطبيق
+            </button>
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               background: 'rgba(8, 20, 43, 0.5)',

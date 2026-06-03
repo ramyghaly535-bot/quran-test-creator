@@ -87,3 +87,42 @@ Stage Summary:
 - App Name: اختبارات القرآن
 - The APK includes all 604 Quran page images and the full web app bundled as a native Android app
 - Backup saved in /home/z/my-project/backups/ directory
+
+---
+Task ID: 3
+Agent: Download Page Agent
+Task: Create download/landing page for the app
+
+Work Log:
+- Read worklog.md to understand previous agents' work (Task 1: fix PreconditionFailed, Task 2: rebuild app, Task 3: APK generation)
+- Read existing code: page.tsx, HomeView.tsx, store.ts, globals.css, quran-constants.ts
+- Added 'download' to ViewMode type in quran-constants.ts
+- Created symlink from public/اختبارات-القرآن.apk to download/اختبارات-القرآن.apk for APK download access
+- Created /home/z/my-project/src/components/DownloadView.tsx with full landing page:
+  - App icon display using /app-icon-1024.png with golden glow animation
+  - App name: منشئ اختبارات القرآن الكريم with text-gradient effect
+  - Brief description of the app in Arabic
+  - Prominent download APK button with golden gradient, hover effects
+  - App info grid: Version 1.0, Size ~159MB, Requires Android 7.0+
+  - Feature list with 8 features (course selection, surah selection, test generation, position change, instant grading, WhatsApp sharing, Quran page images, auto-save)
+  - Step-by-step usage guide with numbered steps
+  - "Try the app directly" button to navigate back to home
+  - Designer credit: أبوعبدالملك AR with sparkle decorations
+  - Back button (fixed position) to return to previous view
+  - Full RTL direction, Arabic text, dark Islamic theme (navy blue #050b18, gold accents #ffd700/#f5c542)
+  - Responsive design with card-glass, text-gradient, text-glow-gold CSS classes
+- Updated /home/z/my-project/src/app/page.tsx:
+  - Added DownloadView import
+  - Added viewMode === 'download' condition rendering <DownloadView />
+- Updated /home/z/my-project/src/components/HomeView.tsx:
+  - Added golden "📱 تحميل التطبيق" download button near designer credit
+  - Button navigates to download view using navigateTo('download')
+  - Hover effects on the download button
+- Verified: dev server compiles successfully with no errors
+- Verified: TypeScript compilation shows no errors in main source code
+
+Stage Summary:
+- DownloadView.tsx created as a beautiful landing/download page with dark Islamic theme
+- APK accessible via /اختبارات-القرآن.apk symlink
+- Navigation between home and download views works via store's navigateTo/goBack
+- All existing features preserved, no regressions

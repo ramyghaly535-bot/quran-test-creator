@@ -97,7 +97,7 @@ export interface TestResult {
   studentInfo: StudentInfo;
 }
 
-export type ViewMode = 'home' | 'studentInfo' | 'test' | 'results' | 'allResults';
+export type ViewMode = 'home' | 'studentInfo' | 'test' | 'results' | 'allResults' | 'download';
 
 export const COURSES_DATA: CourseData[] = [
   { name: "دورة 28-30", start: "المجادلة", end: "الناس", type: "3juz", pageStart: 542, pageEnd: 604, questionCount: 3, hasJuz30: true },
