@@ -49,7 +49,7 @@ interface QuranStore {
   studentInfo: StudentInfo;
   currentQuestionIndex: number;
   completedQuestions: number[];
-  positionChangedQuestions: Set<number>;
+  positionChanged: boolean;
   showWeaknessDialog: boolean;
   retryCount: number;
 
@@ -136,7 +136,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   studentInfo: { name: '', birthDate: '', birthPlace: '', center: '', teacher: '', governorate: '' },
   currentQuestionIndex: 0,
   completedQuestions: [],
-  positionChangedQuestions: new Set<number>(),
+  positionChanged: false,
   showWeaknessDialog: false,
   retryCount: 0,
 
@@ -535,7 +535,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
     set({
       currentQuestionIndex: 0,
       completedQuestions: [],
-      positionChangedQuestions: new Set<number>(),
+      positionChanged: false,
     });
     navigateTo('test');
   },
@@ -670,7 +670,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
         retryCount: newRetryCount,
         currentQuestionIndex: 0,
         completedQuestions: [],
-        positionChangedQuestions: new Set<number>(),
+        positionChanged: false,
         errors: { small: 0, medium: 0, position: 0, weakness: 0 },
       });
       showToast('تم إعادة الاختبار!', 'أسئلة من ' + zoneLabel + ' الأجزاء (المحاولة ' + (newRetryCount + 1) + ')');
@@ -715,14 +715,13 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   },
 
   handleErrorClick: (type, value) => {
-    const { currentQuestionIndex, positionChangedQuestions, selectedCourse, testQuestions, courseQuestionsMap, showToast } = get();
+    const { currentQuestionIndex, positionChanged, selectedCourse, testQuestions, courseQuestionsMap, showToast } = get();
 
     if (type === 'position') {
-      if (positionChangedQuestions.has(currentQuestionIndex)) {
-        showToast('تنبيه', 'لايمكن تغيير الموضع مرتين', true);
+      if (positionChanged) {
+        showToast('تنبيه', 'تم استخدام تغيير الموضع مسبقاً في هذا الاختبار', true);
         return;
       }
-      set(prev => ({ errors: { ...prev.errors, position: prev.errors.position + 1 } }));
       if (selectedCourse) {
         const currentQ = testQuestions[currentQuestionIndex];
         const currentJuz = currentQ.juz;
@@ -735,10 +734,12 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           const newQ = sameJuzQuestions[Math.floor(Math.random() * sameJuzQuestions.length)];
           const updated = [...testQuestions];
           updated[currentQuestionIndex] = newQ;
-          const newChanged = new Set(positionChangedQuestions);
-          newChanged.add(currentQuestionIndex);
-          set({ testQuestions: updated, positionChangedQuestions: newChanged });
-          showToast('تم تغيير الموضع', 'سورة ' + newQ.surah + ' صفحة ' + newQ.page + ' (خصم 3 درجات)');
+          set({
+            testQuestions: updated,
+            positionChanged: true,
+            errors: { ...get().errors, position: 1 },
+          });
+          showToast('تم تغيير الموضع', 'سورة ' + newQ.surah + ' صفحة ' + newQ.page + ' (خصم 3 درجات - مرة واحدة فقط)');
         } else {
           showToast('تنبيه', 'لا يوجد مواضع أخرى متاحة من جزء ' + currentJuz, true);
         }

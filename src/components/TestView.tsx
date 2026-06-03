@@ -9,7 +9,7 @@ import type { QuranVerseData } from '@/lib/quran-pages';
 export default function TestView() {
   const {
     testQuestions, currentQuestionIndex, errors, surahCache,
-    positionChangedQuestions, showWeaknessDialog, retryCount,
+    positionChanged, showWeaknessDialog, retryCount,
     handleQuestionComplete, handlePrevQuestion,
     handleErrorClick, handleWeaknessClick, setShowWeaknessDialog,
     retryTest,
@@ -137,22 +137,22 @@ export default function TestView() {
                 {errors.medium > 0 && <span style={{ fontSize: 10, color: '#fb923c', fontWeight: 900 }}>×{errors.medium}</span>}
               </button>
               {/* تغيير موضع */}
-              <button onClick={() => handleErrorClick('position', 3)} disabled={positionChangedQuestions.has(currentQuestionIndex)} style={{
-                background: positionChangedQuestions.has(currentQuestionIndex)
+              <button onClick={() => handleErrorClick('position', 3)} disabled={positionChanged} style={{
+                background: positionChanged
                   ? 'rgba(100, 100, 100, 0.1)' : 'rgba(168, 85, 247, 0.12)',
-                border: positionChangedQuestions.has(currentQuestionIndex)
+                border: positionChanged
                   ? '1.5px solid rgba(100, 100, 100, 0.3)' : '1.5px solid rgba(168, 85, 247, 0.4)',
-                color: positionChangedQuestions.has(currentQuestionIndex) ? '#666' : '#c084fc',
+                color: positionChanged ? '#666' : '#c084fc',
                 padding: '6px 4px', borderRadius: 8,
-                cursor: positionChangedQuestions.has(currentQuestionIndex) ? 'not-allowed' : 'pointer',
-                fontWeight: 700, fontSize: 11, textAlign: 'center', opacity: positionChangedQuestions.has(currentQuestionIndex) ? 0.5 : 1,
+                cursor: positionChanged ? 'not-allowed' : 'pointer',
+                fontWeight: 700, fontSize: 11, textAlign: 'center', opacity: positionChanged ? 0.5 : 1,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2,
               }}>
                 <span style={{ fontSize: 15 }}>🔄</span>
                 <span>موضع</span>
                 <span style={{ fontSize: 9, opacity: 0.7 }}>-3</span>
-                <span style={{ fontSize: 9, color: positionChangedQuestions.has(currentQuestionIndex) ? '#666' : '#c084fc' }}>
-                  {positionChangedQuestions.has(currentQuestionIndex) ? 'مستخدم' : 'مرة واحدة'}
+                <span style={{ fontSize: 9, color: positionChanged ? '#666' : '#c084fc' }}>
+                  {positionChanged ? 'مستخدم' : 'مرة واحدة'}
                 </span>
               </button>
               {/* ضعف تلاوة */}
