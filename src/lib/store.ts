@@ -48,7 +48,7 @@ interface QuranStore {
   studentInfo: StudentInfo;
   currentQuestionIndex: number;
   completedQuestions: number[];
-  positionChangedQuestions: number[];
+  positionChangedQuestions: Set<number>;
   showWeaknessDialog: boolean;
 
   /* --- المشاهدات --- */
@@ -131,7 +131,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   studentInfo: { name: '', birthDate: '', birthPlace: '', center: '', teacher: '', governorate: '' },
   currentQuestionIndex: 0,
   completedQuestions: [],
-  positionChangedQuestions: [],
+  positionChangedQuestions: new Set<number>(),
   showWeaknessDialog: false,
 
   /* --- المشاهدات --- */
@@ -422,7 +422,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
     set({
       currentQuestionIndex: 0,
       completedQuestions: [],
-      positionChangedQuestions: [],
+      positionChangedQuestions: new Set<number>(),
     });
     navigateTo('test');
   },
