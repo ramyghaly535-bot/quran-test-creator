@@ -3,23 +3,23 @@
 import React from 'react';
 import { useQuranStore } from '@/lib/store';
 import { COURSES_DATA, getGenerationRule, getNextSurah } from '@/lib/quran-constants';
-import QuranPagesViewer from '@/components/QuranPagesViewer';
 import PagePreviewModal from '@/components/PagePreviewModal';
 
 export default function HomeView() {
   const {
     selectedCourse, courseSurahs, selectedSurah, surahData, loading,
-    selection, questions, generating, surahCache, quranDataLoaded,
+    selection, courseQuestionsMap, generating, surahCache, quranDataLoaded,
     flashCourse, flashSurah, previewQuestion, showPagePreview,
     verseFontSize,
     handleCourseSelect, handleSurahSelect, handleVerseClick,
     handleCrossSurahEnd,
-    deleteQuestion, clearAllQuestions, generateFinalTest,
+    deleteQuestion, clearCourseQuestions, generateFinalTest,
     handleQuestionPreview, closePagePreview, cancelSelection,
     setVerseFontSize, navigateTo, showToast,
   } = useQuranStore();
 
-  const courseQuestions = questions.filter(q => q.courseName === selectedCourse?.name);
+  // أسئلة الدورة المحددة فقط
+  const courseQuestions = selectedCourse ? (courseQuestionsMap[selectedCourse.name] || []) : [];
 
   // تحديد السورة التالية عند التحديد النشط
   const startSurahName = selection.active && selection.startSurah ? selection.startSurah : selectedSurah;
@@ -87,16 +87,37 @@ export default function HomeView() {
             </div>
             <div className="p-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                {COURSES_DATA.map((course) => (
-                  <button
-                    key={course.name}
-                    onClick={() => handleCourseSelect(course)}
-                    className={`${selectedCourse?.name === course.name ? 'btn-crimson-active' : 'btn-crimson-inactive'} ${flashCourse === course.name ? 'btn-gold-flash' : ''}`}
-                    style={selectedCourse?.name === course.name ? { transform: 'scale(1.05)' } : {}}
-                  >
-                    <span className="text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>{course.name}</span>
-                  </button>
-                ))}
+                {COURSES_DATA.map((course) => {
+                  const qCount = (courseQuestionsMap[course.name] || []).length;
+                  const isSelected = selectedCourse?.name === course.name;
+                  const hasEnough = qCount >= course.questionCount;
+                  return (
+                    <button
+                      key={course.name}
+                      onClick={() => handleCourseSelect(course)}
+                      className={`${isSelected ? 'btn-crimson-active' : 'btn-crimson-inactive'} ${flashCourse === course.name ? 'btn-gold-flash' : ''}`}
+                      style={{
+                        ...(isSelected ? { transform: 'scale(1.05)' } : {}),
+                        position: 'relative',
+                      }}
+                    >
+                      <span className="text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>{course.name}</span>
+                      {/* شارة عدد الأسئلة */}
+                      {qCount > 0 && (
+                        <span style={{
+                          position: 'absolute', top: -6, left: -6,
+                          background: hasEnough ? '#22c55e' : '#f59e0b',
+                          color: '#fff', fontSize: 10, fontWeight: 900,
+                          padding: '2px 6px', borderRadius: 10, lineHeight: '14px',
+                          minWidth: 18, textAlign: 'center',
+                          boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                        }}>
+                          {qCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -401,34 +422,32 @@ export default function HomeView() {
                   </div>
                 )}
 
-                {/* قائمة الأسئلة */}
-                {questions.length > 0 && (
+                {/* قائمة أسئلة الدورة الحالية */}
+                {selectedCourse && courseQuestions.length > 0 && (
                   <div className="card-glass">
                     <div className="border-b p-4 flex items-center justify-between flex-wrap gap-2" style={{ background: 'rgba(8, 20, 43, 0.95)', borderColor: 'rgba(245, 197, 66, 0.25)' }}>
                       <div>
                         <h2 className="text-xl font-black flex items-center gap-2 text-glow-white-bright text-elegant" style={{ fontFamily: "'Amiri', 'Tajawal', 'Cairo', serif" }}>
                           <span className="text-2xl">📝</span>
-                          <span className="text-gradient">الأسئلة المضافة</span>
-                          <span className="badge">{questions.length}</span>
+                          <span className="text-gradient">أسئلة {selectedCourse.name}</span>
+                          <span className="badge">{courseQuestions.length}</span>
                         </h2>
-                        {selectedCourse && (
-                          <p className="text-xs font-medium text-glow-gold mt-1">
-                            أسئلة الدورة: {courseQuestions.length} / {selectedCourse.questionCount} مطلوبة
-                            <span style={{ margin: '0 8px' }}>|</span>
-                            {getGenerationRule(selectedCourse)}
-                          </p>
-                        )}
+                        <p className="text-xs font-medium text-glow-gold mt-1">
+                          {courseQuestions.length} / {selectedCourse.questionCount} مطلوبة
+                          <span style={{ margin: '0 8px' }}>|</span>
+                          {getGenerationRule(selectedCourse)}
+                        </p>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={clearAllQuestions} style={{
+                        <button onClick={clearCourseQuestions} style={{
                           background: 'rgba(255, 107, 107, 0.15)',
                           border: '2px solid rgba(255, 107, 107, 0.3)',
                           color: '#ff6b6b', padding: '8px 16px', borderRadius: 8,
                           cursor: 'pointer', fontWeight: 700, fontSize: 13
                         }}>
-                          🗑️ مسح الكل
+                          🗑️ مسح أسئلة الدورة
                         </button>
-                        {selectedCourse && courseQuestions.length >= selectedCourse.questionCount && (
+                        {courseQuestions.length >= selectedCourse.questionCount && (
                           <button
                             onClick={generateFinalTest}
                             disabled={generating}
@@ -447,7 +466,7 @@ export default function HomeView() {
                       </div>
                     </div>
                     <div className="p-4 max-h-96 overflow-y-auto custom-scrollbar">
-                      {questions.map((q, idx) => (
+                      {courseQuestions.map((q, idx) => (
                         <div key={idx} style={{
                           background: 'rgba(8, 20, 43, 0.72)',
                           border: '1px solid rgba(245, 197, 66, 0.2)',
@@ -465,7 +484,6 @@ export default function HomeView() {
                               <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>إلى {q.to}{q.endSurah && q.endSurah !== q.surah ? ' ' + q.endSurah : ''}</span>
                               <span style={{ display: 'inline-block', background: 'rgba(245, 197, 66, 0.15)', color: '#ffd700', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>صفحة {q.page}</span>
                               <span style={{ display: 'inline-block', background: 'rgba(139, 92, 246, 0.15)', color: '#a78bfa', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>جزء {q.juz}</span>
-                              <span style={{ display: 'inline-block', background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700 }}>{q.courseName}</span>
                             </div>
                           </div>
                           <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>

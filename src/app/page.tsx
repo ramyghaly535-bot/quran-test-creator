@@ -13,7 +13,7 @@ export default function Home() {
   const viewMode = useQuranStore(s => s.viewMode);
   const loadQuranDataAction = useQuranStore(s => s.loadQuranDataAction);
   const loadSavedData = useQuranStore(s => s.loadSavedData);
-  const questions = useQuranStore(s => s.questions);
+  const courseQuestionsMap = useQuranStore(s => s.courseQuestionsMap);
   const allResults = useQuranStore(s => s.allResults);
 
   // تحميل بيانات القرآن
@@ -26,10 +26,10 @@ export default function Home() {
     loadSavedData();
   }, [loadSavedData]);
 
-  // حفظ الأسئلة في localStorage
+  // حفظ أسئلة كل دورة في localStorage
   useEffect(() => {
-    try { localStorage.setItem('quran_app_questions', JSON.stringify(questions)); } catch (e) { /* ignore */ }
-  }, [questions]);
+    try { localStorage.setItem('quran_course_questions', JSON.stringify(courseQuestionsMap)); } catch (e) { /* ignore */ }
+  }, [courseQuestionsMap]);
 
   // حفظ النتائج في localStorage
   useEffect(() => {

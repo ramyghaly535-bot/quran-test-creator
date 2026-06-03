@@ -1,5 +1,6 @@
 /* ═══════════════════════════════════════════════
    مخزن Zustand لتطبيق اختبارات القرآن الكريم
+   - كل دورة تحفظ أسئلتها بشكل مستقل في courseQuestionsMap
    ═══════════════════════════════════════════════ */
 
 import { create } from 'zustand';
@@ -34,8 +35,8 @@ interface QuranStore {
   surahCache: Record<string, QuranVerseData[]>;
   quranDataLoaded: boolean;
 
-  /* --- الأسئلة --- */
-  questions: Question[];
+  /* --- الأسئلة (مستقلة لكل دورة) --- */
+  courseQuestionsMap: Record<string, Question[]>;
   selection: { active: boolean; startIdx: number | null; endIdx: number | null; startSurah: string | null; startSurahData: QuranVerse[] | null };
   verseFontSize: number;
 
@@ -64,13 +65,14 @@ interface QuranStore {
   toastIdCounter: number;
   showToast: (title: string, description: string, isError?: boolean) => void;
 
-  /* --- الإجراءات --- */
+  /* --- إجراءات --- */
+  getCourseQuestions: (courseName: string) => Question[];
   handleCourseSelect: (course: CourseData) => void;
   handleSurahSelect: (surahName: string) => void;
   handleVerseClick: (index: number) => void;
   handleCrossSurahEnd: (endSurahName: string, endVerseIndex: number, endSurahData: QuranVerse[]) => void;
   deleteQuestion: (q: Question) => void;
-  clearAllQuestions: () => void;
+  clearCourseQuestions: () => void;
   handleQuestionPreview: (q: Question) => void;
   closePagePreview: () => void;
   cancelSelection: () => void;
@@ -120,8 +122,8 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   surahCache: {},
   quranDataLoaded: false,
 
-  /* --- الأسئلة --- */
-  questions: [],
+  /* --- الأسئلة (مستقلة لكل دورة) --- */
+  courseQuestionsMap: {},
   selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
   verseFontSize: 20,
 
@@ -159,6 +161,11 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
     }, 3000);
   },
 
+  /* --- دالة مساعدة: الحصول على أسئلة دورة محددة --- */
+  getCourseQuestions: (courseName: string) => {
+    return get().courseQuestionsMap[courseName] || [];
+  },
+
   /* --- إجراءات الدورة والسورة --- */
 
   handleCourseSelect: (course) => {
@@ -185,13 +192,11 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
 
     const cached = surahCache[surahName];
     if (cached && cached.length > 0) {
-      // إذا كان التحديد نشطاً (تم تحديد البداية)، نحافظ عليه ونسمح باختيار النهاية من سورة أخرى
       if (selection.active && selection.startIdx !== null) {
         set({
           selectedSurah: surahName,
           surahData: cached as unknown as QuranVerse[],
           loading: false,
-          // نحافظ على حالة التحديد - لا نصفّرها
         });
         showToast('اختر نهاية الموضع', 'من سورة ' + surahName);
       } else {
@@ -217,7 +222,9 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   /* --- إجراءات الأسئلة --- */
 
   handleVerseClick: (index) => {
-    const { selection, surahData, selectedSurah, selectedCourse, showToast } = get();
+    const { selection, surahData, selectedSurah, selectedCourse, showToast, courseQuestionsMap } = get();
+    if (!selectedCourse) { showToast('تنبيه', 'الرجاء اختيار دورة أولاً', true); return; }
+
     if (!selection.active) {
       // أول ضغطة: تحديد البداية مع حفظ بيانات السورة
       set({
@@ -236,52 +243,56 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       const startData = selection.startSurahData || surahData;
       const isCrossSurah = startSurah !== selectedSurah;
 
+      let newQuestion: Question;
+
       if (isCrossSurah) {
-        // ═══ سؤال بين سورتين ═══
         const startVerse = startData[selection.startIdx!];
         const endVerse = surahData[index];
-        const newQuestion: Question = {
+        newQuestion = {
           surah: startSurah,
           endSurah: selectedSurah,
           from: startVerse.numberInSurah,
           to: endVerse.numberInSurah,
           page: startVerse.page,
-          courseName: selectedCourse?.name || "",
+          courseName: selectedCourse.name,
           juz: getPageJuz(startVerse.page),
         };
-        set(prev => ({
-          questions: [...prev.questions, newQuestion],
-          selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
-        }));
         showToast('تمت الإضافة', 'سورة ' + startSurah + ' ← ' + selectedSurah + ' صفحة ' + newQuestion.page);
       } else {
-        // ═══ سؤال داخل سورة واحدة ═══
         const start = Math.min(selection.startIdx!, index);
         const end = Math.max(selection.startIdx!, index);
-        const newQuestion: Question = {
+        newQuestion = {
           surah: selectedSurah,
           from: surahData[start].numberInSurah,
           to: surahData[end].numberInSurah,
           page: surahData[start].page,
-          courseName: selectedCourse?.name || "",
+          courseName: selectedCourse.name,
           juz: getPageJuz(surahData[start].page),
         };
-        set(prev => ({
-          questions: [...prev.questions, newQuestion],
-          selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
-        }));
         showToast('تمت الإضافة', 'تم إضافة السؤال من صفحة ' + newQuestion.page);
       }
+
+      // إضافة السؤال لخريطة أسئلة الدورة
+      const courseQs = courseQuestionsMap[selectedCourse.name] || [];
+      set(prev => ({
+        courseQuestionsMap: {
+          ...prev.courseQuestionsMap,
+          [selectedCourse.name]: [...courseQs, newQuestion],
+        },
+        selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
+      }));
     }
   },
 
   /* إتمام سؤال عابر لسورتين مباشرة (من عرض الآيات المدمج) */
   handleCrossSurahEnd: (endSurahName, endVerseIndex, endSurahData) => {
-    const { selection, selectedCourse, showToast } = get();
+    const { selection, selectedCourse, showToast, courseQuestionsMap } = get();
     if (!selection.active || selection.startIdx === null || !selection.startSurahData) {
       showToast('تنبيه', 'لم يتم تحديد البداية بعد', true);
       return;
     }
+    if (!selectedCourse) { showToast('تنبيه', 'الرجاء اختيار دورة أولاً', true); return; }
+
     const startVerse = selection.startSurahData[selection.startIdx];
     const endVerse = endSurahData[endVerseIndex];
     if (!startVerse || !endVerse) return;
@@ -292,27 +303,53 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       from: startVerse.numberInSurah,
       to: endVerse.numberInSurah,
       page: startVerse.page,
-      courseName: selectedCourse?.name || "",
+      courseName: selectedCourse.name,
       juz: getPageJuz(startVerse.page),
     };
+
+    const courseQs = courseQuestionsMap[selectedCourse.name] || [];
     set(prev => ({
-      questions: [...prev.questions, newQuestion],
+      courseQuestionsMap: {
+        ...prev.courseQuestionsMap,
+        [selectedCourse.name]: [...courseQs, newQuestion],
+      },
       selection: { active: false, startIdx: null, endIdx: null, startSurah: null, startSurahData: null },
     }));
     showToast('تمت الإضافة', 'سورة ' + selection.startSurah + ' ← ' + endSurahName + ' صفحة ' + newQuestion.page);
   },
 
   deleteQuestion: (q) => {
-    set(prev => ({
-      questions: prev.questions.filter(item => !(item.surah === q.surah && item.from === q.from && item.page === q.page))
-    }));
+    const { selectedCourse } = get();
+    if (!selectedCourse) return;
+    set(prev => {
+      const courseQs = prev.courseQuestionsMap[selectedCourse.name] || [];
+      return {
+        courseQuestionsMap: {
+          ...prev.courseQuestionsMap,
+          [selectedCourse.name]: courseQs.filter(item =>
+            !(item.surah === q.surah && item.from === q.from && item.page === q.page)
+          ),
+        },
+      };
+    });
   },
 
-  clearAllQuestions: () => {
-    const { showToast } = get();
-    if (confirm('هل أنت متأكد من مسح جميع الأسئلة؟')) {
-      set({ questions: [] });
-      showToast('تم المسح', 'تم مسح جميع الأسئلة');
+  clearCourseQuestions: () => {
+    const { showToast, selectedCourse } = get();
+    if (!selectedCourse) return;
+    const courseQs = get().courseQuestionsMap[selectedCourse.name] || [];
+    if (courseQs.length === 0) {
+      showToast('تنبيه', 'لا توجد أسئلة في هذه الدورة', true);
+      return;
+    }
+    if (confirm('هل أنت متأكد من مسح أسئلة دورة ' + selectedCourse.name + '؟ (' + courseQs.length + ' سؤال)')) {
+      set(prev => ({
+        courseQuestionsMap: {
+          ...prev.courseQuestionsMap,
+          [selectedCourse.name]: [],
+        },
+      }));
+      showToast('تم المسح', 'تم مسح أسئلة دورة ' + selectedCourse.name);
     }
   },
 
@@ -338,14 +375,12 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   /* اختيار سؤال من منطقة محددة داخل الجزء */
   _selectQuestionFromZone: (courseQuestions: Question[], juzNum: number, zoneIndex: number): Question | null => {
     const zoneRange = getJuzZonePageRange(juzNum, zoneIndex);
-    // تصفية الأسئلة التي تقع في المنطقة المحددة
     const zoneQuestions = courseQuestions.filter(q =>
       q.juz === juzNum && q.page >= zoneRange.start && q.page <= zoneRange.end
     );
     if (zoneQuestions.length > 0) {
       return zoneQuestions[Math.floor(Math.random() * zoneQuestions.length)];
     }
-    // إذا لم توجد أسئلة في المنطقة، نبحث في باقي الجزء
     const juzQuestions = courseQuestions.filter(q => q.juz === juzNum);
     if (juzQuestions.length > 0) {
       return juzQuestions[Math.floor(Math.random() * juzQuestions.length)];
@@ -354,11 +389,11 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   },
 
   generateFinalTest: () => {
-    const { selectedCourse, questions, showToast, navigateTo, retryCount } = get();
+    const { selectedCourse, courseQuestionsMap, showToast, navigateTo, retryCount } = get();
     if (!selectedCourse) { showToast('تنبيه', 'الرجاء اختيار دورة أولاً', true); return; }
-    const courseQuestions = questions.filter(q => q.courseName === selectedCourse.name);
+    const courseQuestions = courseQuestionsMap[selectedCourse.name] || [];
     if (courseQuestions.length < selectedCourse.questionCount) {
-      showToast('تنبيه', 'تحتاج إلى ' + selectedCourse.questionCount + ' أسئلة على الأقل', true);
+      showToast('تنبيه', 'تحتاج إلى ' + selectedCourse.questionCount + ' أسئلة على الأقل في هذه الدورة', true);
       return;
     }
 
@@ -366,10 +401,8 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
 
     setTimeout(() => {
       const selectedQs: Question[] = [];
-      // تحديد المنطقة بناءً على رقم المحاولة: 0=أول، 1=وسط، 2=آخر
       const zoneIndex = retryCount % 3;
 
-      // استخراج أرقام الأجزاء من اسم الدورة (مثال: "دورة 28-30" → [28, 29, 30])
       const nameMatch = selectedCourse.name.match(/(\d+)-(\d+)/);
       const juzStart = nameMatch ? parseInt(nameMatch[1]) : 1;
       const juzEnd = nameMatch ? parseInt(nameMatch[2]) : 30;
@@ -379,7 +412,6 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       }
 
       if (selectedCourse.type === "3juz") {
-        // ═══ دورة 3 أجزاء: سؤال واحد من كل جزء من المنطقة المحددة ═══
         for (const juzNum of juzNumbers) {
           const q = get()._selectQuestionFromZone(courseQuestions, juzNum, zoneIndex);
           if (q) {
@@ -391,7 +423,6 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           }
         }
       } else if (selectedCourse.type === "5juz") {
-        // ═══ دورة 5 أجزاء: توزيع على الأجزاء من المنطقة المحددة ═══
         const step = juzNumbers.length / selectedCourse.questionCount;
         for (let i = 0; i < selectedCourse.questionCount; i++) {
           const targetJuzIdx = Math.floor(i * step + step / 2);
@@ -400,7 +431,6 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           if (q && !selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
             selectedQs.push(q);
           } else {
-            // البحث عن بديل
             let found = false;
             for (const jn of juzNumbers) {
               const altQ = get()._selectQuestionFromZone(courseQuestions, jn, zoneIndex);
@@ -418,7 +448,6 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           }
         }
       } else if (selectedCourse.hasJuz30) {
-        // ═══ دورة 10 أو 20 جزء مع جزء 30 ═══
         const juz30Q = get()._selectQuestionFromZone(courseQuestions, 30, zoneIndex);
         if (juz30Q) {
           selectedQs.push(juz30Q);
@@ -459,7 +488,6 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           }
         }
       } else {
-        // ═══ دورة 10 أجزاء بدون جزء 30 ═══
         const step = juzNumbers.length / selectedCourse.questionCount;
         for (let i = 0; i < selectedCourse.questionCount; i++) {
           const targetJuzIdx = Math.floor(i * step + step / 2);
@@ -513,9 +541,9 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   },
 
   retryTest: () => {
-    const { selectedCourse, questions, showToast, retryCount } = get();
+    const { selectedCourse, courseQuestionsMap, showToast, retryCount } = get();
     if (!selectedCourse) { showToast('تنبيه', 'لا توجد دورة محددة', true); return; }
-    const courseQuestions = questions.filter(q => q.courseName === selectedCourse.name);
+    const courseQuestions = courseQuestionsMap[selectedCourse.name] || [];
     if (courseQuestions.length < selectedCourse.questionCount) {
       showToast('تنبيه', 'تحتاج إلى ' + selectedCourse.questionCount + ' أسئلة على الأقل', true);
       return;
@@ -525,7 +553,6 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
     const zoneIndex = newRetryCount % 3;
     const selectedQs: Question[] = [];
 
-    // استخراج أرقام الأجزاء من اسم الدورة
     const nameMatch = selectedCourse.name.match(/(\d+)-(\d+)/);
     const juzStart = nameMatch ? parseInt(nameMatch[1]) : 1;
     const juzEnd = nameMatch ? parseInt(nameMatch[2]) : 30;
@@ -655,7 +682,6 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
     set({ completedQuestions: [...get().completedQuestions, currentQuestionIndex] });
 
     if (currentQuestionIndex === testQuestions.length - 1) {
-      // حساب النتيجة النهائية
       const totalDeductions = (errors.small * 0.5) + (errors.medium * 1) + (errors.position * 3) + errors.weakness;
       const finalScore = Math.max(0, Math.round((100 - totalDeductions) * 10) / 10);
       const now = new Date();
@@ -689,7 +715,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   },
 
   handleErrorClick: (type, value) => {
-    const { currentQuestionIndex, positionChangedQuestions, selectedCourse, testQuestions, questions, showToast } = get();
+    const { currentQuestionIndex, positionChangedQuestions, selectedCourse, testQuestions, courseQuestionsMap, showToast } = get();
 
     if (type === 'position') {
       if (positionChangedQuestions.has(currentQuestionIndex)) {
@@ -700,9 +726,9 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       if (selectedCourse) {
         const currentQ = testQuestions[currentQuestionIndex];
         const currentJuz = currentQ.juz;
-        const sameJuzQuestions = questions.filter(q =>
+        const courseQuestions = courseQuestionsMap[selectedCourse.name] || [];
+        const sameJuzQuestions = courseQuestions.filter(q =>
           q.juz === currentJuz &&
-          q.courseName === selectedCourse.name &&
           !(q.surah === currentQ.surah && q.from === currentQ.from && q.page === currentQ.page)
         );
         if (sameJuzQuestions.length > 0) {
@@ -771,12 +797,34 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
 
   loadSavedData: () => {
     try {
-      const savedQuestions = localStorage.getItem('quran_app_questions');
+      const savedMap = localStorage.getItem('quran_course_questions');
       const savedResults = localStorage.getItem('quran_test_results');
-      const parsedQuestions = savedQuestions ? JSON.parse(savedQuestions) : [];
-      const parsedResults = savedResults ? JSON.parse(savedResults) : [];
-      if (parsedQuestions.length > 0) set({ questions: parsedQuestions });
-      if (parsedResults.length > 0) set({ allResults: parsedResults });
+      if (savedMap) {
+        const parsedMap = JSON.parse(savedMap);
+        if (typeof parsedMap === 'object' && parsedMap !== null) {
+          set({ courseQuestionsMap: parsedMap });
+        }
+      }
+      // دعم البيانات القديمة (النسخة السابقة كانت تستخدم مصفوفة واحدة)
+      const savedOldQuestions = localStorage.getItem('quran_app_questions');
+      if (savedOldQuestions && !savedMap) {
+        const parsedOld = JSON.parse(savedOldQuestions);
+        if (Array.isArray(parsedOld) && parsedOld.length > 0) {
+          const newMap: Record<string, Question[]> = {};
+          for (const q of parsedOld) {
+            const cn = q.courseName || 'غير محدد';
+            if (!newMap[cn]) newMap[cn] = [];
+            newMap[cn].push(q);
+          }
+          set({ courseQuestionsMap: newMap });
+          localStorage.setItem('quran_course_questions', JSON.stringify(newMap));
+          localStorage.removeItem('quran_app_questions');
+        }
+      }
+      if (savedResults) {
+        const parsedResults = JSON.parse(savedResults);
+        if (parsedResults.length > 0) set({ allResults: parsedResults });
+      }
     } catch (e) { console.error('Error loading saved data:', e); }
   },
 }));
