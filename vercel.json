@@ -1,0 +1,9 @@
+{
+  "framework": "nextjs",
+  "outputDirectory": "out",
+  "buildCommand": "next build",
+  "installCommand": "bun install",
+  "git": {
+    "deploymentEnabled": true
+  }
+}
