@@ -8,7 +8,7 @@ import type { QuranVerseData } from '@/lib/quran-pages';
 import {
   type ViewMode, type CourseData, type Question, type QuranVerse,
   type StudentInfo, type TestErrors, type TestResult,
-  SURAH_NAMES, SURAH_JUZ,
+  SURAH_NAMES, SURAH_JUZ, getPageJuz,
 } from './quran-constants';
 
 interface ToastItem {
@@ -215,7 +215,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
         to: surahData[end].numberInSurah,
         page: surahData[start].page,
         courseName: selectedCourse?.name || "",
-        juz: surahData[start].juz || (SURAH_JUZ[selectedSurah] || 1),
+        juz: getPageJuz(surahData[start].page),
       };
       set(prev => ({
         questions: [...prev.questions, newQuestion],

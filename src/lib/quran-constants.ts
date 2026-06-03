@@ -125,6 +125,23 @@ export function getSurahJuz(surahName: string): number {
   return SURAH_JUZ[surahName] || 1;
 }
 
+/* تحديد رقم الجزء من رقم الصفحة
+   الجزء 1: صفحات 1-21 (21 صفحة)
+   الجزء 2-29: كل جزء 20 صفحة
+   الجزء 30: صفحات 582-604 (23 صفحة) */
+export function getPageJuz(page: number): number {
+  if (page <= 21) return 1;
+  if (page >= 582) return 30;
+  return Math.floor((page - 22) / 20) + 2;
+}
+
+/* الحصول على نطاق صفحات الجزء */
+export function getJuzPageRange(juz: number): { start: number; end: number } {
+  if (juz === 1) return { start: 1, end: 21 };
+  if (juz === 30) return { start: 582, end: 604 };
+  return { start: 22 + (juz - 2) * 20, end: 21 + (juz - 1) * 20 };
+}
+
 export function getGenerationRule(course: CourseData): string {
   const nameMatch = course.name.match(/(\d+)-(\d+)/);
   const juzStart = nameMatch ? parseInt(nameMatch[1]) : 1;
