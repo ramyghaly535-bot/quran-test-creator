@@ -8,7 +8,7 @@ import type { QuranVerseData } from '@/lib/quran-pages';
 import {
   type ViewMode, type CourseData, type Question, type QuranVerse,
   type StudentInfo, type TestErrors, type TestResult,
-  SURAH_NAMES, SURAH_JUZ, getPageJuz,
+  SURAH_NAMES, SURAH_JUZ, getPageJuz, getJuzZonePageRange, getZoneLabel,
 } from './quran-constants';
 
 interface ToastItem {
@@ -50,6 +50,7 @@ interface QuranStore {
   completedQuestions: number[];
   positionChangedQuestions: Set<number>;
   showWeaknessDialog: boolean;
+  retryCount: number;
 
   /* --- المشاهدات --- */
   showFireworks: boolean;
@@ -75,6 +76,7 @@ interface QuranStore {
   setVerseFontSize: (size: number) => void;
   generateFinalTest: () => void;
   handleStartTest: () => void;
+  retryTest: () => void;
   handleQuestionComplete: () => void;
   handlePrevQuestion: () => void;
   handleErrorClick: (type: 'small' | 'medium' | 'position' | 'weakness', value: number) => void;
@@ -133,6 +135,7 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
   completedQuestions: [],
   positionChangedQuestions: new Set<number>(),
   showWeaknessDialog: false,
+  retryCount: 0,
 
   /* --- المشاهدات --- */
   showFireworks: false,
@@ -258,8 +261,26 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
 
   /* --- إجراءات الاختبار --- */
 
+  /* اختيار سؤال من منطقة محددة داخل الجزء */
+  _selectQuestionFromZone: (courseQuestions: Question[], juzNum: number, zoneIndex: number): Question | null => {
+    const zoneRange = getJuzZonePageRange(juzNum, zoneIndex);
+    // تصفية الأسئلة التي تقع في المنطقة المحددة
+    const zoneQuestions = courseQuestions.filter(q =>
+      q.juz === juzNum && q.page >= zoneRange.start && q.page <= zoneRange.end
+    );
+    if (zoneQuestions.length > 0) {
+      return zoneQuestions[Math.floor(Math.random() * zoneQuestions.length)];
+    }
+    // إذا لم توجد أسئلة في المنطقة، نبحث في باقي الجزء
+    const juzQuestions = courseQuestions.filter(q => q.juz === juzNum);
+    if (juzQuestions.length > 0) {
+      return juzQuestions[Math.floor(Math.random() * juzQuestions.length)];
+    }
+    return null;
+  },
+
   generateFinalTest: () => {
-    const { selectedCourse, questions, showToast, navigateTo } = get();
+    const { selectedCourse, questions, showToast, navigateTo, retryCount } = get();
     if (!selectedCourse) { showToast('تنبيه', 'الرجاء اختيار دورة أولاً', true); return; }
     const courseQuestions = questions.filter(q => q.courseName === selectedCourse.name);
     if (courseQuestions.length < selectedCourse.questionCount) {
@@ -271,6 +292,8 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
 
     setTimeout(() => {
       const selectedQs: Question[] = [];
+      // تحديد المنطقة بناءً على رقم المحاولة: 0=أول، 1=وسط، 2=آخر
+      const zoneIndex = retryCount % 3;
 
       // استخراج أرقام الأجزاء من اسم الدورة (مثال: "دورة 28-30" → [28, 29, 30])
       const nameMatch = selectedCourse.name.match(/(\d+)-(\d+)/);
@@ -282,12 +305,11 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       }
 
       if (selectedCourse.type === "3juz") {
-        // ═══ دورة 3 أجزاء: سؤال واحد من كل جزء ═══
+        // ═══ دورة 3 أجزاء: سؤال واحد من كل جزء من المنطقة المحددة ═══
         for (const juzNum of juzNumbers) {
-          const juzQuestions = courseQuestions.filter(q => q.juz === juzNum);
-          if (juzQuestions.length > 0) {
-            const randomQ = juzQuestions[Math.floor(Math.random() * juzQuestions.length)];
-            selectedQs.push(randomQ);
+          const q = get()._selectQuestionFromZone(courseQuestions, juzNum, zoneIndex);
+          if (q) {
+            selectedQs.push(q);
           } else {
             showToast('تنبيه', 'يجب إضافة سؤال واحد على الأقل من الجزء ' + juzNum, true);
             set({ generating: false });
@@ -295,25 +317,21 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           }
         }
       } else if (selectedCourse.type === "5juz") {
-        // ═══ دورة 5 أجزاء: سؤال من كل جزء مع تخطي جزء واحد ═══
-        // اختيار الأجزاء بالتساوي: نقسم الـ5 أجزاء على عدد الأسئلة
+        // ═══ دورة 5 أجزاء: توزيع على الأجزاء من المنطقة المحددة ═══
         const step = juzNumbers.length / selectedCourse.questionCount;
         for (let i = 0; i < selectedCourse.questionCount; i++) {
           const targetJuzIdx = Math.floor(i * step + step / 2);
           const targetJuz = juzNumbers[Math.min(targetJuzIdx, juzNumbers.length - 1)];
-          const juzQuestions = courseQuestions.filter(q => q.juz === targetJuz);
-          if (juzQuestions.length > 0) {
-            const randomQ = juzQuestions[Math.floor(Math.random() * juzQuestions.length)];
-            if (!selectedQs.find(sq => sq.surah === randomQ.surah && sq.from === randomQ.from && sq.page === randomQ.page)) {
-              selectedQs.push(randomQ);
-            }
+          const q = get()._selectQuestionFromZone(courseQuestions, targetJuz, zoneIndex);
+          if (q && !selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
+            selectedQs.push(q);
           } else {
-            // البحث عن أقرب جزء لديه أسئلة
+            // البحث عن بديل
             let found = false;
             for (const jn of juzNumbers) {
-              const altQ = courseQuestions.filter(q => q.juz === jn);
-              if (altQ.length > 0 && !selectedQs.find(sq => sq.juz === jn)) {
-                selectedQs.push(altQ[Math.floor(Math.random() * altQ.length)]);
+              const altQ = get()._selectQuestionFromZone(courseQuestions, jn, zoneIndex);
+              if (altQ && !selectedQs.find(sq => sq.juz === jn)) {
+                selectedQs.push(altQ);
                 found = true;
                 break;
               }
@@ -326,35 +344,30 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           }
         }
       } else if (selectedCourse.hasJuz30) {
-        // ═══ دورة 10 أو 20 جزء مع جزء 30: سؤال من جزء 30 + باقي من أجزاء متفرقة ═══
-        const juz30Q = courseQuestions.filter(q => q.juz === 30);
-        if (juz30Q.length > 0) {
-          selectedQs.push(juz30Q[Math.floor(Math.random() * juz30Q.length)]);
+        // ═══ دورة 10 أو 20 جزء مع جزء 30 ═══
+        const juz30Q = get()._selectQuestionFromZone(courseQuestions, 30, zoneIndex);
+        if (juz30Q) {
+          selectedQs.push(juz30Q);
         } else {
           showToast('تنبيه', 'يجب إضافة سؤال واحد على الأقل من الجزء 30', true);
           set({ generating: false });
           return;
         }
-        // توزيع الأسئلة المتبقية على الأجزاء الأخرى بالتساوي
         const otherJuzNumbers = juzNumbers.filter(j => j !== 30);
         const remaining = selectedCourse.questionCount - 1;
         const step = otherJuzNumbers.length / remaining;
         for (let i = 0; i < remaining; i++) {
           const targetJuzIdx = Math.floor(i * step + step / 2);
           const targetJuz = otherJuzNumbers[Math.min(targetJuzIdx, otherJuzNumbers.length - 1)];
-          const juzQuestions = courseQuestions.filter(q => q.juz === targetJuz);
-          if (juzQuestions.length > 0) {
-            const randomQ = juzQuestions[Math.floor(Math.random() * juzQuestions.length)];
-            if (!selectedQs.find(sq => sq.surah === randomQ.surah && sq.from === randomQ.from && sq.page === randomQ.page)) {
-              selectedQs.push(randomQ);
-            }
+          const q = get()._selectQuestionFromZone(courseQuestions, targetJuz, zoneIndex);
+          if (q && !selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
+            selectedQs.push(q);
           } else {
-            // البحث عن بديل من جزء قريب
             let found = false;
             for (const jn of otherJuzNumbers) {
-              const altQ = courseQuestions.filter(q => q.juz === jn);
-              if (altQ.length > 0 && !selectedQs.find(sq => sq.juz === jn)) {
-                selectedQs.push(altQ[Math.floor(Math.random() * altQ.length)]);
+              const altQ = get()._selectQuestionFromZone(courseQuestions, jn, zoneIndex);
+              if (altQ && !selectedQs.find(sq => sq.juz === jn)) {
+                selectedQs.push(altQ);
                 found = true;
                 break;
               }
@@ -372,23 +385,20 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
           }
         }
       } else {
-        // ═══ دورة 10 أجزاء بدون جزء 30: توزيع الأسئلة على الأجزاء بالتساوي ═══
+        // ═══ دورة 10 أجزاء بدون جزء 30 ═══
         const step = juzNumbers.length / selectedCourse.questionCount;
         for (let i = 0; i < selectedCourse.questionCount; i++) {
           const targetJuzIdx = Math.floor(i * step + step / 2);
           const targetJuz = juzNumbers[Math.min(targetJuzIdx, juzNumbers.length - 1)];
-          const juzQuestions = courseQuestions.filter(q => q.juz === targetJuz);
-          if (juzQuestions.length > 0) {
-            const randomQ = juzQuestions[Math.floor(Math.random() * juzQuestions.length)];
-            if (!selectedQs.find(sq => sq.surah === randomQ.surah && sq.from === randomQ.from && sq.page === randomQ.page)) {
-              selectedQs.push(randomQ);
-            }
+          const q = get()._selectQuestionFromZone(courseQuestions, targetJuz, zoneIndex);
+          if (q && !selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
+            selectedQs.push(q);
           } else {
             let found = false;
             for (const jn of juzNumbers) {
-              const altQ = courseQuestions.filter(q => q.juz === jn);
-              if (altQ.length > 0 && !selectedQs.find(sq => sq.juz === jn)) {
-                selectedQs.push(altQ[Math.floor(Math.random() * altQ.length)]);
+              const altQ = get()._selectQuestionFromZone(courseQuestions, jn, zoneIndex);
+              if (altQ && !selectedQs.find(sq => sq.juz === jn)) {
+                selectedQs.push(altQ);
                 found = true;
                 break;
               }
@@ -403,13 +413,14 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       }
 
       selectedQs.sort((a, b) => a.page - b.page);
+      const zoneLabel = getZoneLabel(zoneIndex);
       set({
         testQuestions: selectedQs,
         generating: false,
         errors: { small: 0, medium: 0, position: 0, weakness: 0 },
       });
       navigateTo('studentInfo');
-      showToast('تم التوليد!', selectedQs.length + ' أسئلة متنوعة');
+      showToast('تم التوليد!', selectedQs.length + ' أسئلة من ' + zoneLabel + ' الأجزاء');
     }, 1000);
   },
 
@@ -425,6 +436,144 @@ export const useQuranStore = create<QuranStore>((set, get) => ({
       positionChangedQuestions: new Set<number>(),
     });
     navigateTo('test');
+  },
+
+  retryTest: () => {
+    const { selectedCourse, questions, showToast, retryCount } = get();
+    if (!selectedCourse) { showToast('تنبيه', 'لا توجد دورة محددة', true); return; }
+    const courseQuestions = questions.filter(q => q.courseName === selectedCourse.name);
+    if (courseQuestions.length < selectedCourse.questionCount) {
+      showToast('تنبيه', 'تحتاج إلى ' + selectedCourse.questionCount + ' أسئلة على الأقل', true);
+      return;
+    }
+
+    const newRetryCount = retryCount + 1;
+    const zoneIndex = newRetryCount % 3;
+    const selectedQs: Question[] = [];
+
+    // استخراج أرقام الأجزاء من اسم الدورة
+    const nameMatch = selectedCourse.name.match(/(\d+)-(\d+)/);
+    const juzStart = nameMatch ? parseInt(nameMatch[1]) : 1;
+    const juzEnd = nameMatch ? parseInt(nameMatch[2]) : 30;
+    const juzNumbers: number[] = [];
+    for (let j = juzStart; j <= juzEnd; j++) {
+      juzNumbers.push(j);
+    }
+
+    let success = true;
+
+    if (selectedCourse.type === "3juz") {
+      for (const juzNum of juzNumbers) {
+        const q = get()._selectQuestionFromZone(courseQuestions, juzNum, zoneIndex);
+        if (q) {
+          selectedQs.push(q);
+        } else {
+          showToast('تنبيه', 'لا توجد أسئلة كافية من الجزء ' + juzNum, true);
+          success = false;
+          break;
+        }
+      }
+    } else if (selectedCourse.type === "5juz") {
+      const step = juzNumbers.length / selectedCourse.questionCount;
+      for (let i = 0; i < selectedCourse.questionCount; i++) {
+        const targetJuzIdx = Math.floor(i * step + step / 2);
+        const targetJuz = juzNumbers[Math.min(targetJuzIdx, juzNumbers.length - 1)];
+        const q = get()._selectQuestionFromZone(courseQuestions, targetJuz, zoneIndex);
+        if (q && !selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
+          selectedQs.push(q);
+        } else {
+          let found = false;
+          for (const jn of juzNumbers) {
+            const altQ = get()._selectQuestionFromZone(courseQuestions, jn, zoneIndex);
+            if (altQ && !selectedQs.find(sq => sq.juz === jn)) {
+              selectedQs.push(altQ);
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            showToast('تنبيه', 'لا توجد أسئلة كافية من أجزاء الدورة', true);
+            success = false;
+            break;
+          }
+        }
+      }
+    } else if (selectedCourse.hasJuz30) {
+      const juz30Q = get()._selectQuestionFromZone(courseQuestions, 30, zoneIndex);
+      if (juz30Q) {
+        selectedQs.push(juz30Q);
+      } else {
+        showToast('تنبيه', 'لا توجد أسئلة كافية من الجزء 30', true);
+        success = false;
+      }
+      if (success) {
+        const otherJuzNumbers = juzNumbers.filter(j => j !== 30);
+        const remaining = selectedCourse.questionCount - 1;
+        const step = otherJuzNumbers.length / remaining;
+        for (let i = 0; i < remaining; i++) {
+          const targetJuzIdx = Math.floor(i * step + step / 2);
+          const targetJuz = otherJuzNumbers[Math.min(targetJuzIdx, otherJuzNumbers.length - 1)];
+          const q = get()._selectQuestionFromZone(courseQuestions, targetJuz, zoneIndex);
+          if (q && !selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
+            selectedQs.push(q);
+          } else {
+            let found = false;
+            for (const jn of otherJuzNumbers) {
+              const altQ = get()._selectQuestionFromZone(courseQuestions, jn, zoneIndex);
+              if (altQ && !selectedQs.find(sq => sq.juz === jn)) {
+                selectedQs.push(altQ);
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              showToast('تنبيه', 'لا توجد أسئلة كافية', true);
+              success = false;
+              break;
+            }
+          }
+        }
+      }
+    } else {
+      const step = juzNumbers.length / selectedCourse.questionCount;
+      for (let i = 0; i < selectedCourse.questionCount; i++) {
+        const targetJuzIdx = Math.floor(i * step + step / 2);
+        const targetJuz = juzNumbers[Math.min(targetJuzIdx, juzNumbers.length - 1)];
+        const q = get()._selectQuestionFromZone(courseQuestions, targetJuz, zoneIndex);
+        if (q && !selectedQs.find(sq => sq.surah === q.surah && sq.from === q.from && sq.page === q.page)) {
+          selectedQs.push(q);
+        } else {
+          let found = false;
+          for (const jn of juzNumbers) {
+            const altQ = get()._selectQuestionFromZone(courseQuestions, jn, zoneIndex);
+            if (altQ && !selectedQs.find(sq => sq.juz === jn)) {
+              selectedQs.push(altQ);
+              found = true;
+              break;
+            }
+          }
+          if (!found) {
+            showToast('تنبيه', 'لا توجد أسئلة كافية', true);
+            success = false;
+            break;
+          }
+        }
+      }
+    }
+
+    if (success) {
+      selectedQs.sort((a, b) => a.page - b.page);
+      const zoneLabel = getZoneLabel(zoneIndex);
+      set({
+        testQuestions: selectedQs,
+        retryCount: newRetryCount,
+        currentQuestionIndex: 0,
+        completedQuestions: [],
+        positionChangedQuestions: new Set<number>(),
+        errors: { small: 0, medium: 0, position: 0, weakness: 0 },
+      });
+      showToast('تم إعادة الاختبار!', 'أسئلة من ' + zoneLabel + ' الأجزاء (المحاولة ' + (newRetryCount + 1) + ')');
+    }
   },
 
   handleQuestionComplete: () => {

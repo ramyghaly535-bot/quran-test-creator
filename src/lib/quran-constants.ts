@@ -142,6 +142,28 @@ export function getJuzPageRange(juz: number): { start: number; end: number } {
   return { start: 22 + (juz - 2) * 20, end: 21 + (juz - 1) * 20 };
 }
 
+/* نوع منطقة الجزء: أول / وسط / آخر */
+export type JuzZone = 'beginning' | 'middle' | 'end';
+
+/* الحصول على نطاق صفحات المنطقة داخل الجزء
+   الجزء يقسم إلى 3 مناطق متساوية
+   zone 0 = أول الجزء، zone 1 = وسط الجزء، zone 2 = آخر الجزء */
+export function getJuzZonePageRange(juz: number, zoneIndex: number): { start: number; end: number } {
+  const range = getJuzPageRange(juz);
+  const totalPages = range.end - range.start + 1;
+  const zoneSize = Math.ceil(totalPages / 3);
+  const start = range.start + zoneIndex * zoneSize;
+  const end = Math.min(range.start + (zoneIndex + 1) * zoneSize - 1, range.end);
+  return { start, end };
+}
+
+/* الحصول على اسم المنطقة بالعربية */
+export function getZoneLabel(zoneIndex: number): string {
+  if (zoneIndex === 0) return 'أول';
+  if (zoneIndex === 1) return 'وسط';
+  return 'آخر';
+}
+
 export function getGenerationRule(course: CourseData): string {
   const nameMatch = course.name.match(/(\d+)-(\d+)/);
   const juzStart = nameMatch ? parseInt(nameMatch[1]) : 1;

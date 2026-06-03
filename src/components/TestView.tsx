@@ -9,9 +9,10 @@ import type { QuranVerseData } from '@/lib/quran-pages';
 export default function TestView() {
   const {
     testQuestions, currentQuestionIndex, errors, surahCache,
-    positionChangedQuestions, showWeaknessDialog,
+    positionChangedQuestions, showWeaknessDialog, retryCount,
     handleQuestionComplete, handlePrevQuestion,
     handleErrorClick, handleWeaknessClick, setShowWeaknessDialog,
+    retryTest,
   } = useQuranStore();
 
   if (testQuestions.length === 0) return null;
@@ -194,6 +195,16 @@ export default function TestView() {
                   fontWeight: 700, fontSize: 14, textAlign: 'center'
                 }}>
                   ← السابق
+                </button>
+                <button onClick={retryTest} style={{
+                  flex: 1,
+                  background: 'linear-gradient(45deg, #f59e0b, #d97706)',
+                  border: 'none', padding: '12px', borderRadius: 10,
+                  color: '#ffffff', fontWeight: 800, fontSize: 14,
+                  cursor: 'pointer', textAlign: 'center',
+                  boxShadow: '0 4px 15px rgba(245, 158, 11, 0.4)'
+                }}>
+                  🔁 إعادة
                 </button>
                 <button onClick={handleQuestionComplete} style={{
                   flex: 2,
