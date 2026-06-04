@@ -11,7 +11,7 @@ export function formatPageNum(page: number): string {
 
 /** الحصول على مسار صورة الصفحة محلياً */
 export function getPageImagePath(page: number): string {
-  return `/quran-pages/page${formatPageNum(page)}.png`;
+  return `/quran-pages/page${formatPageNum(page)}.jpg`;
 }
 
 /** عدد صفحات المصحف الكريم */

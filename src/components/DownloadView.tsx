@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuranStore } from '@/lib/store';
 
 const FEATURES = [
@@ -26,13 +26,39 @@ const STEPS = [
 export default function DownloadView() {
   const navigateTo = useQuranStore(s => s.navigateTo);
   const goBack = useQuranStore(s => s.goBack);
+  const viewMode = useQuranStore(s => s.viewMode);
+  const [copied, setCopied] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState('');
 
-  const handleDownload = () => {
-    // محاولة تحميل ملف APK المحلي
-    const link = document.createElement('a');
-    link.href = '/اختبارات-القرآن.apk';
-    link.download = 'اختبارات-القرآن.apk';
-    link.click();
+  useEffect(() => {
+    setCurrentUrl(window.location.origin);
+  }, []);
+
+  const handleStartApp = () => {
+    navigateTo('home');
+    // تحديث URL بدون إعادة تحميل الصفحة
+    window.history.pushState({}, '', '/');
+  };
+
+  const handleShareLink = () => {
+    const url = currentUrl || window.location.origin;
+    if (navigator.share) {
+      navigator.share({
+        title: 'اختبارات القرآن الكريم',
+        text: 'تطبيق متكامل لإنشاء اختبارات حفظ القرآن الكريم',
+        url: url,
+      });
+    } else {
+      navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleShareWhatsApp = () => {
+    const url = currentUrl || window.location.origin;
+    const text = '📚 اختبارات القرآن الكريم\nتطبيق متكامل لإنشاء اختبارات حفظ القرآن\n🔗 ' + url;
+    window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
   };
 
   return (
@@ -64,7 +90,7 @@ export default function DownloadView() {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
-              onClick={handleDownload}
+              onClick={handleStartApp}
               style={{
                 background: 'linear-gradient(135deg, #d4a017, #ffd700)',
                 border: 'none', borderRadius: 10, padding: '8px 20px',
@@ -73,28 +99,30 @@ export default function DownloadView() {
                 boxShadow: '0 4px 12px rgba(255, 215, 0, 0.3)',
               }}
             >
-              📥 تحميل APK
+              🚀 ابدأ الآن
             </button>
-            <button
-              onClick={() => goBack()}
-              style={{
-                background: 'rgba(10, 22, 40, 0.8)',
-                border: '1.5px solid rgba(245, 197, 66, 0.25)',
-                borderRadius: 10, padding: '8px 16px',
-                color: '#fff5cc', cursor: 'pointer',
-                fontWeight: 700, fontSize: 13,
-                fontFamily: "'Amiri', 'Tajawal', serif",
-              }}
-            >
-              ← التطبيق
-            </button>
+            {viewMode !== 'download' && (
+              <button
+                onClick={() => goBack()}
+                style={{
+                  background: 'rgba(10, 22, 40, 0.8)',
+                  border: '1.5px solid rgba(245, 197, 66, 0.25)',
+                  borderRadius: 10, padding: '8px 16px',
+                  color: '#fff5cc', cursor: 'pointer',
+                  fontWeight: 700, fontSize: 13,
+                  fontFamily: "'Amiri', 'Tajawal', serif",
+                }}
+              >
+                ← رجوع
+              </button>
+            )}
           </div>
         </header>
 
         {/* المحتوى الرئيسي */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '20px 16px 40px' }}>
 
-          {/* قسم البطل - أيقونة + اسم + تحميل */}
+          {/* قسم البطل - أيقونة + اسم + بدء */}
           <div style={{ textAlign: 'center', marginBottom: 36, marginTop: 20 }}>
             {/* أيقونة التطبيق */}
             <div style={{ margin: '0 auto 20px', position: 'relative', width: 130, height: 130 }}>
@@ -142,10 +170,10 @@ export default function DownloadView() {
               تطبيق متكامل لإنشاء اختبارات حفظ القرآن الكريم، يدعم 16 دورة حفظ مختلفة، مع عرض صفحات المصحف الشريف وتقييم فوري للنتائج
             </p>
 
-            {/* أزرار التحميل */}
+            {/* أزرار البدء */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
               <button
-                onClick={handleDownload}
+                onClick={handleStartApp}
                 style={{
                   display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 12,
                   background: 'linear-gradient(135deg, #d4a017, #ffd700, #f5c542)',
@@ -166,35 +194,60 @@ export default function DownloadView() {
                   (e.currentTarget as HTMLElement).style.boxShadow = '0 8px 30px rgba(255, 215, 0, 0.45), 0 0 20px rgba(255, 215, 0, 0.2)';
                 }}
               >
-                <span style={{ fontSize: 30 }}>📥</span>
-                تحميل التطبيق APK
+                <span style={{ fontSize: 30 }}>🚀</span>
+                ابدأ استخدام التطبيق
               </button>
 
-              <button
-                onClick={() => navigateTo('home')}
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  background: 'rgba(10, 22, 40, 0.8)',
-                  border: '2px solid rgba(245, 197, 66, 0.3)',
-                  borderRadius: 16, padding: '12px 32px',
-                  color: '#ffd700', cursor: 'pointer',
-                  fontWeight: 800, fontSize: 15,
-                  fontFamily: "'Amiri', 'Tajawal', serif",
-                  transition: 'all 0.3s ease',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(245, 197, 66, 0.6)';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.borderColor = 'rgba(245, 197, 66, 0.3)';
-                }}
-              >
-                🌐 تجربة التطبيق مباشرة من المتصفح
-              </button>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  onClick={handleShareWhatsApp}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: 'rgba(37, 211, 102, 0.15)',
+                    border: '2px solid rgba(37, 211, 102, 0.4)',
+                    borderRadius: 16, padding: '12px 24px',
+                    color: '#25d366', cursor: 'pointer',
+                    fontWeight: 800, fontSize: 14,
+                    fontFamily: "'Amiri', 'Tajawal', serif",
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(37, 211, 102, 0.7)';
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(37, 211, 102, 0.25)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(37, 211, 102, 0.4)';
+                    (e.currentTarget as HTMLElement).style.background = 'rgba(37, 211, 102, 0.15)';
+                  }}
+                >
+                  📱 مشاركة واتساب
+                </button>
+                <button
+                  onClick={handleShareLink}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: 8,
+                    background: 'rgba(10, 22, 40, 0.8)',
+                    border: '2px solid rgba(245, 197, 66, 0.3)',
+                    borderRadius: 16, padding: '12px 24px',
+                    color: '#ffd700', cursor: 'pointer',
+                    fontWeight: 800, fontSize: 14,
+                    fontFamily: "'Amiri', 'Tajawal', serif",
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(245, 197, 66, 0.6)';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.borderColor = 'rgba(245, 197, 66, 0.3)';
+                  }}
+                >
+                  {copied ? '✅ تم النسخ!' : '🔗 نسخ الرابط'}
+                </button>
+              </div>
             </div>
 
             <p style={{ color: 'rgba(255, 245, 204, 0.45)', fontSize: 12, marginTop: 10 }}>
-              اضغط على الزر لبدء تحميل ملف التثبيت • يعمل على جميع أجهزة أندرويد
+              يعمل مباشرة من المتصفح • لا يحتاج تثبيت • مجاني بالكامل
             </p>
           </div>
 
@@ -207,9 +260,9 @@ export default function DownloadView() {
             }}>
               {[
                 { icon: '📦', label: 'الإصدار', value: '1.0' },
-                { icon: '💾', label: 'الحجم', value: '~159 MB' },
-                { icon: '🤖', label: 'يتطلب', value: 'Android 7.0+' },
-                { icon: '🌐', label: 'النوع', value: 'مجاني' },
+                { icon: '🌐', label: 'النوع', value: 'ويب' },
+                { icon: '📱', label: 'متوافق', value: 'جميع الأجهزة' },
+                { icon: '💰', label: 'السعر', value: 'مجاني' },
               ].map((item, idx) => (
                 <div key={idx} style={{
                   background: 'rgba(10, 22, 40, 0.95)',
@@ -304,56 +357,10 @@ export default function DownloadView() {
             </div>
           </div>
 
-          {/* تعليمات التثبيت */}
-          <div className="card-glass" style={{ width: '100%', maxWidth: 520, marginBottom: 28, overflow: 'hidden' }}>
-            <div style={{
-              background: 'rgba(10, 22, 40, 0.95)',
-              padding: '20px',
-            }}>
-              <h3 style={{
-                color: '#ffd700', fontSize: 18, fontWeight: 800,
-                fontFamily: "'Amiri', 'Tajawal', serif",
-                marginBottom: 14, textAlign: 'center',
-              }}>
-                ⚙️ تعليمات التثبيت
-              </h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {[
-                  { step: '١', text: 'حمّل ملف APK من الزر أعلاه' },
-                  { step: '٢', text: 'افتح ملف APK الذي تم تحميله' },
-                  { step: '٣', text: 'إذا ظهرت رسالة "التثبيت من مصادر غير معروفة"، اذهب إلى الإعدادات وفعّل الخيار' },
-                  { step: '٤', text: 'اضغط "تثبيت" وانتظر انتهاء التثبيت' },
-                  { step: '٥', text: 'افتح التطبيق واستمتع! 🎉' },
-                ].map((item, idx) => (
-                  <div key={idx} style={{
-                    display: 'flex', alignItems: 'flex-start', gap: 10,
-                    background: 'rgba(34, 197, 94, 0.06)',
-                    border: '1px solid rgba(34, 197, 94, 0.15)',
-                    borderRadius: 10, padding: '10px 14px',
-                  }}>
-                    <div style={{
-                      width: 26, height: 26, borderRadius: '50%',
-                      background: 'rgba(34, 197, 94, 0.2)',
-                      border: '1px solid rgba(34, 197, 94, 0.4)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      color: '#4ade80', fontSize: 13, fontWeight: 900, flexShrink: 0,
-                      fontFamily: "'Amiri', serif",
-                    }}>
-                      {item.step}
-                    </div>
-                    <span style={{ color: '#fff5cc', fontSize: 13, fontWeight: 600, lineHeight: 1.6, fontFamily: "'Amiri', 'Tajawal', serif" }}>
-                      {item.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* زر تحميل ثاني في الأسفل */}
+          {/* زر بدء ثاني في الأسفل */}
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
             <button
-              onClick={handleDownload}
+              onClick={handleStartApp}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
                 background: 'linear-gradient(135deg, #d4a017, #ffd700)',
@@ -372,7 +379,7 @@ export default function DownloadView() {
                 (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
               }}
             >
-              📥 تحميل التطبيق الآن
+              🚀 ابدأ استخدام التطبيق الآن
             </button>
           </div>
 
