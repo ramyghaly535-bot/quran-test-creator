@@ -16,6 +16,7 @@ export default function Home() {
   const loadSavedData = useQuranStore(s => s.loadSavedData);
   const courseQuestionsMap = useQuranStore(s => s.courseQuestionsMap);
   const allResults = useQuranStore(s => s.allResults);
+  const navigateTo = useQuranStore(s => s.navigateTo);
 
   // تحميل بيانات القرآن
   useEffect(() => {
@@ -26,6 +27,16 @@ export default function Home() {
   useEffect(() => {
     loadSavedData();
   }, [loadSavedData]);
+
+  // التحقق من معاملات URL لعرض صفحة التحميل مباشرة
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const page = params.get('page');
+    const hash = window.location.hash.replace('#', '');
+    if (page === 'download' || hash === 'download') {
+      navigateTo('download');
+    }
+  }, [navigateTo]);
 
   // حفظ أسئلة كل دورة في localStorage
   useEffect(() => {
