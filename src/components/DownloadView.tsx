@@ -23,6 +23,8 @@ const STEPS = [
   { num: '٦', text: 'شاهد النتيجة وشاركها عبر واتساب' },
 ];
 
+const APK_DOWNLOAD_URL = 'https://github.com/ramyghaly535-bot/quran-test-creator/releases/download/v1.0.0/quran-test-app.apk';
+
 export default function DownloadView() {
   const navigateTo = useQuranStore(s => s.navigateTo);
   const goBack = useQuranStore(s => s.goBack);
@@ -36,7 +38,6 @@ export default function DownloadView() {
 
   const handleStartApp = () => {
     navigateTo('home');
-    // تحديث URL بدون إعادة تحميل الصفحة
     window.history.pushState({}, '', '/');
   };
 
@@ -170,8 +171,9 @@ export default function DownloadView() {
               تطبيق متكامل لإنشاء اختبارات حفظ القرآن الكريم، يدعم 16 دورة حفظ مختلفة، مع عرض صفحات المصحف الشريف وتقييم فوري للنتائج
             </p>
 
-            {/* أزرار البدء */}
+            {/* أزرار البدء والتحميل */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              {/* زر بدء التطبيق من المتصفح */}
               <button
                 onClick={handleStartApp}
                 style={{
@@ -198,7 +200,43 @@ export default function DownloadView() {
                 ابدأ استخدام التطبيق
               </button>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {/* زر تحميل الـ APK */}
+              <a
+                href={APK_DOWNLOAD_URL}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 10,
+                  background: 'linear-gradient(135deg, #1a7a3a, #25d366, #128C7E)',
+                  border: 'none', borderRadius: 20,
+                  padding: '14px 40px',
+                  fontSize: 18, fontWeight: 900, color: '#ffffff',
+                  cursor: 'pointer',
+                  textDecoration: 'none',
+                  boxShadow: '0 6px 25px rgba(37, 211, 102, 0.35), 0 0 15px rgba(37, 211, 102, 0.15)',
+                  fontFamily: "'Amiri', 'Tajawal', serif",
+                  transition: 'all 0.3s ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1.05)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = '0 10px 35px rgba(37, 211, 102, 0.5), 0 0 25px rgba(37, 211, 102, 0.25)';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
+                  (e.currentTarget as HTMLElement).style.boxShadow = '0 6px 25px rgba(37, 211, 102, 0.35), 0 0 15px rgba(37, 211, 102, 0.15)';
+                }}
+              >
+                <span style={{ fontSize: 26 }}>📥</span>
+                تحميل تطبيق أندرويد APK
+              </a>
+
+              <p style={{ color: 'rgba(255, 245, 204, 0.5)', fontSize: 12 }}>
+                ملف التثبيت لحوالي 159 MB • يتطلب Android 7.0 أو أحدث
+              </p>
+
+              {/* أزرار المشاركة */}
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center', marginTop: 8 }}>
                 <button
                   onClick={handleShareWhatsApp}
                   style={{
@@ -247,7 +285,7 @@ export default function DownloadView() {
             </div>
 
             <p style={{ color: 'rgba(255, 245, 204, 0.45)', fontSize: 12, marginTop: 10 }}>
-              يعمل مباشرة من المتصفح • لا يحتاج تثبيت • مجاني بالكامل
+              يعمل مباشرة من المتصفح • أو حمّل تطبيق أندرويد • مجاني بالكامل
             </p>
           </div>
 
@@ -260,8 +298,8 @@ export default function DownloadView() {
             }}>
               {[
                 { icon: '📦', label: 'الإصدار', value: '1.0' },
-                { icon: '🌐', label: 'النوع', value: 'ويب' },
-                { icon: '📱', label: 'متوافق', value: 'جميع الأجهزة' },
+                { icon: '💾', label: 'الحجم', value: '~159 MB' },
+                { icon: '📱', label: 'يتطلب', value: 'Android 7.0+' },
                 { icon: '💰', label: 'السعر', value: 'مجاني' },
               ].map((item, idx) => (
                 <div key={idx} style={{
@@ -357,18 +395,22 @@ export default function DownloadView() {
             </div>
           </div>
 
-          {/* زر بدء ثاني في الأسفل */}
+          {/* زر تحميل APK ثاني في الأسفل */}
           <div style={{ textAlign: 'center', marginBottom: 28 }}>
-            <button
-              onClick={handleStartApp}
+            <a
+              href={APK_DOWNLOAD_URL}
+              download
+              target="_blank"
+              rel="noopener noreferrer"
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 10,
-                background: 'linear-gradient(135deg, #d4a017, #ffd700)',
+                background: 'linear-gradient(135deg, #1a7a3a, #25d366)',
                 border: 'none', borderRadius: 18,
                 padding: '14px 40px',
-                fontSize: 18, fontWeight: 900, color: '#0a1628',
+                fontSize: 18, fontWeight: 900, color: '#ffffff',
                 cursor: 'pointer',
-                boxShadow: '0 6px 25px rgba(255, 215, 0, 0.4)',
+                textDecoration: 'none',
+                boxShadow: '0 6px 25px rgba(37, 211, 102, 0.4)',
                 fontFamily: "'Amiri', 'Tajawal', serif",
                 transition: 'all 0.3s ease',
               }}
@@ -379,8 +421,11 @@ export default function DownloadView() {
                 (e.currentTarget as HTMLElement).style.transform = 'scale(1)';
               }}
             >
-              🚀 ابدأ استخدام التطبيق الآن
-            </button>
+              📥 تحميل تطبيق أندرويد APK
+            </a>
+            <p style={{ color: 'rgba(255, 245, 204, 0.4)', fontSize: 11, marginTop: 8 }}>
+              أو اضغط "ابدأ الآن" لتجربة التطبيق مباشرة من المتصفح
+            </p>
           </div>
 
           {/* رصيد المصمم */}
