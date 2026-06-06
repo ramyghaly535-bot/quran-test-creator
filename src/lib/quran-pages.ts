@@ -11,6 +11,16 @@ export function formatPageNum(page: number): string {
 
 /** الحصول على مسار صورة الصفحة محلياً */
 export function getPageImagePath(page: number): string {
+  // في بيئة المتصفح، نحتاج لإضافة basePath يدوياً لروابط الصور
+  if (typeof window !== 'undefined') {
+    try {
+      // @ts-expect-error __NEXT_DATA__ is injected by Next.js
+      const basePath = window.__NEXT_DATA__?.basePath || '';
+      return `${basePath}/quran-pages/page${formatPageNum(page)}.jpg`;
+    } catch {
+      // fallback
+    }
+  }
   return `/quran-pages/page${formatPageNum(page)}.jpg`;
 }
 

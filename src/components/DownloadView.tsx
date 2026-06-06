@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuranStore } from '@/lib/store';
+import { withBasePath } from '@/lib/base-path';
 
 const FEATURES = [
   { icon: '📚', title: 'اختيار الدورة', desc: '16 دورة حفظ من جزء واحد إلى 30 جزءاً' },
@@ -78,7 +79,7 @@ export default function DownloadView() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <img
-              src="/app-icon-1024.png"
+              src={withBasePath('/app-icon-1024.png')}
               alt="أيقونة"
               style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid rgba(245, 197, 66, 0.3)' }}
             />
@@ -135,7 +136,7 @@ export default function DownloadView() {
                 overflow: 'hidden',
               }}>
                 <img
-                  src="/app-icon-1024.png"
+                  src={withBasePath('/app-icon-1024.png')}
                   alt="أيقونة تطبيق اختبارات القرآن"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
