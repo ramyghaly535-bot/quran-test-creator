@@ -9,7 +9,23 @@ export function initBasePath() {
   if (typeof window !== 'undefined') {
     try {
       // @ts-expect-error __NEXT_DATA__ is injected by Next.js
-      _basePath = window.__NEXT_DATA__?.basePath || '';
+      const nextBasePath = window.__NEXT_DATA__?.basePath || '';
+      if (nextBasePath) {
+        _basePath = nextBasePath;
+      } else {
+        // كشف تلقائي من مسار URL - مثلاً /quran-test-creator/
+        const pathSegments = window.location.pathname.split('/').filter(Boolean);
+        if (pathSegments.length > 0) {
+          // التحقق مما إذا كنا على GitHub Pages (ليس المسار الجذر)
+          // إذا كان المسار يحتوي على مجلد فرعي وليس ملف HTML
+          const firstSegment = pathSegments[0];
+          // استثناء المسارات الشائعة للتطبيق نفسه
+          const appRoutes = ['_next', 'api', 'quran-pages', 'favicon.ico'];
+          if (!appRoutes.includes(firstSegment)) {
+            _basePath = '/' + firstSegment;
+          }
+        }
+      }
     } catch {
       _basePath = '';
     }
