@@ -1,0 +1,4 @@
+:HL["/quran-test-creator/_next/static/chunks/af3690e97dec4ee0.css","style"]
+:HL["/quran-test-creator/_next/static/chunks/7223e0aeb51536cc.css","style"]
+:HC["/",""]
+0:{"buildId":"4OSISwloRJWYPeak7bMze","tree":{"name":"","paramType":null,"paramKey":"","hasRuntimePrefetch":false,"slots":{"children":{"name":"__PAGE__","paramType":null,"paramKey":"__PAGE__","hasRuntimePrefetch":false,"slots":null,"isRootLayout":false}},"isRootLayout":true},"staleTime":300}

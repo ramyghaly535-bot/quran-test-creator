@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,93860,t=>{t.v("/quran-test-creator/_next/static/media/app-icon-1024.2e4dd4dc.png")}]);
