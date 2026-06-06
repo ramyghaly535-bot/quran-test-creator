@@ -5,6 +5,7 @@ import "../../public/fonts/fonts.css";
 export const metadata: Metadata = {
   title: "منشئ اختبارات القرآن الكريم",
   description: "تطبيق لإنشاء اختبارات حفظ القرآن الكريم مع نظام تقييم متكامل",
+  // المسارات ستُضاف إليها basePath تلقائياً من Next.js
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -38,7 +39,6 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
-        <link rel="manifest" href="/manifest.json" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body
@@ -51,7 +51,12 @@ export default function RootLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js');
+                  var bp = window.__NEXT_DATA__ && window.__NEXT_DATA__.basePath ? window.__NEXT_DATA__.basePath : '';
+                  if (!bp && window.location.pathname !== '/') {
+                    var s = window.location.pathname.split('/').filter(Boolean);
+                    if (s.length > 0) bp = '/' + s[0];
+                  }
+                  navigator.serviceWorker.register(bp + '/sw.js');
                 });
               }
             `,

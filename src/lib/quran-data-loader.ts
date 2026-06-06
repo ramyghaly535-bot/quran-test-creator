@@ -51,7 +51,13 @@ export async function loadQuranData(
     
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        const res = await fetch('/quran-data.json');
+        // استخدام basePath للعمل على GitHub Pages
+        const basePath = typeof window !== 'undefined' && window.__NEXT_DATA__?.basePath
+          ? window.__NEXT_DATA__.basePath
+          : (typeof window !== 'undefined' && window.location.pathname !== '/'
+            ? '/' + window.location.pathname.split('/').filter(Boolean)[0]
+            : '');
+        const res = await fetch(basePath + '/quran-data.json');
         
         if (res.ok) {
           const data = await res.json() as QuranDataMap;
