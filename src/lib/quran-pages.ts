@@ -4,6 +4,8 @@
    تعمل بدون إنترنت تماماً مثل بيانات السور
    ═══════════════════════════════════════════════ */
 
+import { getBasePath } from './base-path';
+
 /** تنسيق رقم الصفحة بثلاث أرقام */
 export function formatPageNum(page: number): string {
   return String(page).padStart(3, '0');
@@ -11,26 +13,12 @@ export function formatPageNum(page: number): string {
 
 /** الحصول على مسار صورة الصفحة محلياً */
 export function getPageImagePath(page: number): string {
-  const basepath = `/quran-pages/page${formatPageNum(page)}.jpg`;
-  // في بيئة المتصفح، نستخدم withBasePath لإضافة المسار الأساسي تلقائياً
+  const relativePath = `/quran-pages/page${formatPageNum(page)}.jpg`;
   if (typeof window !== 'undefined') {
-    try {
-      // استخدام الكشف الديناميكي عن basePath
-      // @ts-expect-error __NEXT_DATA__ is injected by Next.js
-      const bp = window.__NEXT_DATA__?.basePath || '';
-      if (bp) return bp + basepath;
-      // كشف إضافي من URL
-      if (window.location.pathname !== '/') {
-        const segments = window.location.pathname.split('/').filter(Boolean);
-        const skip = ['_next','api','quran-pages','fonts','sw.js','manifest.json','index.html'];
-        const valid = segments.filter(s => skip.indexOf(s) === -1 && !s.endsWith('.html') && !s.endsWith('.json') && !s.endsWith('.js'));
-        if (valid.length > 0) return '/' + valid[0] + basepath;
-      }
-    } catch {
-      // fallback to default
-    }
+    const bp = getBasePath();
+    if (bp) return bp + relativePath;
   }
-  return basepath;
+  return relativePath;
 }
 
 /** عدد صفحات المصحف الكريم */

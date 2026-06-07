@@ -4,6 +4,21 @@ import React, { useState, useCallback } from 'react';
 import { useQuranStore } from '@/lib/store';
 import { withBasePath, getBasePath } from '@/lib/base-path';
 
+// مُعالج خطأ تحميل الأيقونة - يجرب مسارات بديلة
+const handleIconError = (e: React.SyntheticEvent<HTMLImageElement>) => {
+  const img = e.currentTarget;
+  const currentSrc = img.getAttribute('src') || '';
+  // إذا كان المسار بدون basePath، جرب مع basePath
+  if (!currentSrc.includes('/quran-test-creator/')) {
+    img.src = '/quran-test-creator/app-icon-1024.png';
+  } else if (currentSrc.includes('/quran-test-creator/')) {
+    // إذا كان مع basePath، جرب بدونه
+    img.src = '/app-icon-1024.png';
+  }
+  // منع التكرار اللانهائي
+  img.onerror = null;
+};
+
 const FEATURES = [
   { icon: '📚', title: 'اختيار الدورة', desc: '16 دورة حفظ من جزء واحد إلى 30 جزءاً' },
   { icon: '📖', title: 'اختيار السور', desc: 'تصفح آيات القرآن الكريم بسهولة' },
@@ -31,8 +46,16 @@ export default function DownloadView() {
   const goBack = useQuranStore(s => s.goBack);
   const viewMode = useQuranStore(s => s.viewMode);
   const [copied, setCopied] = useState(false);
-  const [iconSrc] = useState(() => withBasePath('/app-icon-1024.png'));
+  const [iconSrc, setIconSrc] = useState(() => withBasePath('/app-icon-1024.png'));
   const [currentUrl] = useState(() => typeof window !== 'undefined' ? window.location.origin : '');
+
+  // Fallback: إذا لم يتم كشف basePath في البداية، أعد المحاولة بعد التحميل
+  React.useEffect(() => {
+    const bp = getBasePath();
+    if (bp) {
+      setIconSrc(bp + '/app-icon-1024.png');
+    }
+  }, []);
 
   const handleStartApp = () => {
     navigateTo('home');
@@ -81,6 +104,7 @@ export default function DownloadView() {
             <img
               src={iconSrc}
               alt="أيقونة"
+              onError={handleIconError}
               style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid rgba(245, 197, 66, 0.3)' }}
             />
             <span style={{
@@ -138,6 +162,7 @@ export default function DownloadView() {
                 <img
                   src={iconSrc}
                   alt="أيقونة تطبيق اختبارات القرآن"
+                  onError={handleIconError}
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
               </div>

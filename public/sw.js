@@ -1,23 +1,38 @@
-const CACHE_NAME = 'quran-test-v2';
-const STATIC_ASSETS = [
-  './',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-48.png',
-  './app-icon-1024.png',
-  './apple-touch-icon.png',
+const CACHE_NAME = 'quran-test-v3';
+
+// كشف basePath تلقائياً
+function detectBasePath() {
+  // من URL الحالي - عند التثبيت نعرف المسار
+  var swUrl = self.location.href;
+  var match = swUrl.match(/^(https?:\/\/[^/]+\/[^/]+)\/sw\.js/);
+  if (match) {
+    return match[1].replace(/^https?:\/\/[^/]+/, '');
+  }
+  return '';
+}
+
+var BASE_PATH = detectBasePath();
+
+// الموارد التي يتم تخزينها مؤقتاً عند التثبيت
+var STATIC_ASSETS = [
+  BASE_PATH + '/',
+  BASE_PATH + '/manifest.json',
+  BASE_PATH + '/icon-192.png',
+  BASE_PATH + '/icon-512.png',
+  BASE_PATH + '/icon-48.png',
+  BASE_PATH + '/app-icon-1024.png',
+  BASE_PATH + '/apple-touch-icon.png',
 ];
 
 // الموارد التي يتم تخزينها مؤقتاً لفترة طويلة
-const LONG_CACHE_PATTERNS = [
+var LONG_CACHE_PATTERNS = [
   /\/fonts\//,
   /\/_next\/static\//,
   /\/quran-pages\//,
 ];
 
 // الموارد التي لا يتم تخزينها أبداً
-const NO_CACHE_PATTERNS = [
+var NO_CACHE_PATTERNS = [
   /\/api\//,
   /chrome-extension:\/\//,
 ];
@@ -26,7 +41,6 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(STATIC_ASSETS).catch(() => {
-        // إذا فشل تخزين بعض الملفات، استمر بدونها
         return Promise.resolve();
       });
     })
@@ -46,29 +60,24 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // تجاهل الطلبات غير GET
   if (event.request.method !== 'GET') return;
 
-  const url = new URL(event.request.url);
+  var url = new URL(event.request.url);
 
-  // تجاهل الطلبات غير HTTP
   if (!url.protocol.startsWith('http')) return;
 
-  // تجاهل المسارات المحظورة
   if (NO_CACHE_PATTERNS.some(p => p.test(url.pathname))) return;
 
-  // استراتيجية: الشبكة أولاً مع التخزين المؤقت كاحتياطي
-  // للموارد الثابتة: التخزين المؤقت أولاً مع الشبكة كاحتياطي
-  const isLongCache = LONG_CACHE_PATTERNS.some(p => p.test(url.pathname));
+  var isLongCache = LONG_CACHE_PATTERNS.some(p => p.test(url.pathname));
 
   if (isLongCache) {
-    // Cache First للموارد الثابتة (خطوط، صور صفحات القرآن، JS/CSS)
+    // Cache First للموارد الثابتة
     event.respondWith(
       caches.match(event.request).then((cached) => {
         if (cached) return cached;
         return fetch(event.request).then((response) => {
           if (response && response.status === 200) {
-            const clone = response.clone();
+            var clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, clone);
             });
@@ -80,11 +89,11 @@ self.addEventListener('fetch', (event) => {
       })
     );
   } else {
-    // Network First للصفحات والطلبات العادية
+    // Network First للصفحات
     event.respondWith(
       fetch(event.request).then((response) => {
         if (response && response.status === 200) {
-          const clone = response.clone();
+          var clone = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
             cache.put(event.request, clone);
           });

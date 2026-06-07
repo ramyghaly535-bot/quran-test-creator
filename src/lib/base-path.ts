@@ -3,6 +3,9 @@
  * يُستخدم لضمان عمل الروابط والصور على GitHub Pages وغيره
  */
 
+// ثابت وقت البناء - يُحدد تلقائياً من next.config.ts
+const BUILD_TIME_BASE_PATH = process.env.__NEXT_ROUTER_BASEPATH || '';
+
 let _basePath = '';
 let _initialized = false;
 
@@ -12,7 +15,13 @@ export function initBasePath() {
   _initialized = true;
 
   try {
-    // 1. المحاولة الأولى: من __NEXT_DATA__
+    // 1. من ثابت وقت البناء (الأكثر موثوقية)
+    if (BUILD_TIME_BASE_PATH) {
+      _basePath = BUILD_TIME_BASE_PATH;
+      return;
+    }
+
+    // 2. من __NEXT_DATA__ (يُحدد تلقائياً عند البناء مع basePath)
     // @ts-expect-error __NEXT_DATA__ is injected by Next.js
     const nextBasePath = window.__NEXT_DATA__?.basePath || '';
     if (nextBasePath) {
@@ -20,7 +29,18 @@ export function initBasePath() {
       return;
     }
 
-    // 2. المحاولة الثانية: من <base> tag
+    // 3. كشف من اسم المضيف (GitHub Pages)
+    // إذا كان المضيف هو github.io، فالجزء الأول من المسار هو اسم المستودع
+    const hostname = window.location.hostname;
+    if (hostname.endsWith('.github.io')) {
+      const segments = window.location.pathname.split('/').filter(Boolean);
+      if (segments.length > 0) {
+        _basePath = '/' + segments[0];
+        return;
+      }
+    }
+
+    // 4. كشف من <base> tag
     const baseTag = document.querySelector('base[href]');
     if (baseTag) {
       const href = baseTag.getAttribute('href') || '';
@@ -30,22 +50,19 @@ export function initBasePath() {
       }
     }
 
-    // 3. المحاولة الثالثة: كشف من URL
-    // إذا كنا على GitHub Pages مثل /quran-test-creator/
+    // 5. كشف من URL (للمواقع الأخرى)
     if (window.location.pathname !== '/') {
       const segments = window.location.pathname.split('/').filter(Boolean);
-      // استبعاد المسارات الخاصة
       const appSegments = ['_next', 'api', 'quran-pages', 'fonts', 'sw.js', 'manifest.json', 'index.html'];
       const validSegments = segments.filter(s => !appSegments.includes(s) && !s.endsWith('.html') && !s.endsWith('.json') && !s.endsWith('.js') && !s.match(/^\(.*\)$/));
 
-      // تحقق مما إذا كان أول مسار هو basePath (مثل quran-test-creator)
       if (validSegments.length > 0) {
         _basePath = '/' + validSegments[0];
         return;
       }
     }
 
-    // 4. المحاولة الرابعة: كشف من script src
+    // 6. كشف من script src
     const scripts = document.querySelectorAll('script[src]');
     for (const script of scripts) {
       const src = script.getAttribute('src') || '';

@@ -2,17 +2,22 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "../../public/fonts/fonts.css";
 
+// كشف basePath من متغيرات البيئة
+const basePath = process.env.GITHUB_PAGES === 'true' || process.env.CI === 'true'
+  ? '/quran-test-creator'
+  : '';
+
 export const metadata: Metadata = {
   title: "منشئ اختبارات القرآن الكريم",
   description: "تطبيق لإنشاء اختبارات حفظ القرآن الكريم مع نظام تقييم متكامل",
-  manifest: "/manifest.json",
+  manifest: `${basePath}/manifest.json`,
   icons: {
     icon: [
-      { url: "/icon-48.png", sizes: "48x48", type: "image/png" },
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: `${basePath}/icon-48.png`, sizes: "48x48", type: "image/png" },
+      { url: `${basePath}/icon-192.png`, sizes: "192x192", type: "image/png" },
     ],
     apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+      { url: `${basePath}/apple-touch-icon.png`, sizes: "180x180", type: "image/png" },
     ],
   },
   appleWebApp: {
@@ -54,15 +59,15 @@ export default function RootLayout({
         {/* دعم الشاشات المليئة بالحزوز */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        {/* تحميل الخطوط مسبقاً */}
-        <link rel="preload" href="/fonts/amiri-400-arabic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/amiri-700-arabic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/tajawal-400-arabic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        <link rel="preload" href="/fonts/tajawal-700-arabic.woff2" as="font" type="font/woff2" crossOrigin="anonymous" />
-        {/* أيقونات PWA */}
-        <link rel="icon" type="image/png" sizes="48x48" href="/icon-48.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+        {/* تحميل الخطوط مسبقاً - مع basePath */}
+        <link rel="preload" href={`${basePath}/fonts/amiri-400-arabic.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={`${basePath}/fonts/amiri-700-arabic.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={`${basePath}/fonts/tajawal-400-arabic.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
+        <link rel="preload" href={`${basePath}/fonts/tajawal-700-arabic.woff2`} as="font" type="font/woff2" crossOrigin="anonymous" />
+        {/* أيقونات PWA - مع basePath */}
+        <link rel="icon" type="image/png" sizes="48x48" href={`${basePath}/icon-48.png`} />
+        <link rel="icon" type="image/png" sizes="192x192" href={`${basePath}/icon-192.png`} />
+        <link rel="apple-touch-icon" sizes="180x180" href={`${basePath}/apple-touch-icon.png`} />
       </head>
       <body
         className="antialiased"
@@ -79,6 +84,11 @@ export default function RootLayout({
                   try {
                     bp = window.__NEXT_DATA__ && window.__NEXT_DATA__.basePath ? window.__NEXT_DATA__.basePath : '';
                   } catch(e) {}
+                  // كشف من اسم المضيف (GitHub Pages)
+                  if (!bp && window.location.hostname.endsWith('.github.io')) {
+                    var segs = window.location.pathname.split('/').filter(Boolean);
+                    if (segs.length > 0) bp = '/' + segs[0];
+                  }
                   if (!bp && window.location.pathname !== '/') {
                     var s = window.location.pathname.split('/').filter(Boolean);
                     var skip = ['_next','api','quran-pages','fonts','sw.js','manifest.json','index.html'];
