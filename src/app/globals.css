@@ -125,10 +125,28 @@
    أنماط تطبيق اختبارات القرآن الكريم
    ═══════════════════════════════════════════════ */
 
+/* توافق الأجهزة القديمة - إعادة تعيين أساسية */
+*, *::before, *::after {
+  -webkit-box-sizing: border-box;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* دعم الشاشات المليئة بالحزوز (notch) */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body {
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 /* الخلفية الإسلامية */
 .pattern-islamic {
   background: linear-gradient(135deg, #050b18 0%, #0a1628 30%, #091a2a 60%, #050b18 100%);
   min-height: 100vh;
+  min-height: -webkit-fill-available;
   position: relative;
 }
 
@@ -158,9 +176,10 @@
   border: 2px solid rgba(245, 197, 66, 0.2);
   border-radius: 16px;
   overflow: hidden;
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 0 20px rgba(245, 197, 66, 0.05);
+  -webkit-transition: all 0.3s ease;
   transition: all 0.3s ease;
 }
 
@@ -178,15 +197,26 @@
   border-radius: 12px;
   cursor: pointer;
   font-weight: 700;
+  -webkit-transition: all 0.3s ease;
   transition: all 0.3s ease;
   box-shadow: 0 4px 15px rgba(139, 0, 0, 0.4), 0 0 15px rgba(255, 215, 0, 0.2);
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+  /* تحسين اللمس على الجوال */
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .btn-crimson-active:hover {
   background: linear-gradient(180deg, #a50000, #6e0000);
   box-shadow: 0 6px 20px rgba(139, 0, 0, 0.5), 0 0 25px rgba(255, 215, 0, 0.3);
+  -webkit-transform: scale(1.05);
   transform: scale(1.05);
+}
+
+.btn-crimson-active:active {
+  -webkit-transform: scale(0.98);
+  transform: scale(0.98);
 }
 
 .btn-crimson-inactive {
@@ -197,18 +227,35 @@
   border-radius: 12px;
   cursor: pointer;
   font-weight: 700;
+  -webkit-transition: all 0.3s ease;
   transition: all 0.3s ease;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .btn-crimson-inactive:hover {
   background: linear-gradient(180deg, #162d5a, #0d1a3a);
   border-color: rgba(245, 197, 66, 0.4);
   color: #fff5cc;
+  -webkit-transform: scale(1.03);
   transform: scale(1.03);
 }
 
+.btn-crimson-inactive:active {
+  -webkit-transform: scale(0.98);
+  transform: scale(0.98);
+}
+
 .btn-gold-flash {
+  -webkit-animation: goldFlash 0.8s ease-out;
   animation: goldFlash 0.8s ease-out;
+}
+
+@-webkit-keyframes goldFlash {
+  0% { box-shadow: 0 0 0 rgba(255, 215, 0, 0); }
+  30% { box-shadow: 0 0 30px rgba(255, 215, 0, 0.6), 0 0 60px rgba(255, 215, 0, 0.3); }
+  100% { box-shadow: 0 0 0 rgba(255, 215, 0, 0); }
 }
 
 @keyframes goldFlash {
@@ -224,6 +271,7 @@
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
+  -webkit-animation: goldenShimmer 3s linear infinite;
   animation: goldenShimmer 3s linear infinite;
 }
 
@@ -250,14 +298,21 @@
   color: #ffd700;
   font-weight: 800;
   text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2);
+  -webkit-animation: designerGlow 3s ease-in-out infinite;
   animation: designerGlow 3s ease-in-out infinite;
 }
 
 .designer-credit-sparkle {
   color: #ffd700;
   display: inline-block;
+  -webkit-animation: sparkleRotate 2s linear infinite;
   animation: sparkleRotate 2s linear infinite;
   text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+}
+
+@-webkit-keyframes designerGlow {
+  0%, 100% { text-shadow: 0 0 10px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.2); }
+  50% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4); }
 }
 
 @keyframes designerGlow {
@@ -265,10 +320,16 @@
   50% { text-shadow: 0 0 20px rgba(255, 215, 0, 0.8), 0 0 40px rgba(255, 215, 0, 0.4); }
 }
 
+@-webkit-keyframes sparkleRotate {
+  0% { -webkit-transform: rotate(0deg) scale(1); transform: rotate(0deg) scale(1); }
+  50% { -webkit-transform: rotate(180deg) scale(1.2); transform: rotate(180deg) scale(1.2); }
+  100% { -webkit-transform: rotate(360deg) scale(1); transform: rotate(360deg) scale(1); }
+}
+
 @keyframes sparkleRotate {
-  0% { transform: rotate(0deg) scale(1); }
-  50% { transform: rotate(180deg) scale(1.2); }
-  100% { transform: rotate(360deg) scale(1); }
+  0% { -webkit-transform: rotate(0deg) scale(1); transform: rotate(0deg) scale(1); }
+  50% { -webkit-transform: rotate(180deg) scale(1.2); transform: rotate(180deg) scale(1.2); }
+  100% { -webkit-transform: rotate(360deg) scale(1); transform: rotate(360deg) scale(1); }
 }
 
 /* حقل الإدخال */
@@ -279,11 +340,14 @@
   border-radius: 10px;
   padding: 12px 16px;
   color: #ffffff;
-  font-size: 16px;
+  font-size: 16px; /* منع تكبير تلقائي على iOS */
   font-family: "'Amiri', 'Tajawal', 'Cairo', serif";
   direction: rtl;
+  -webkit-transition: all 0.3s ease;
   transition: all 0.3s ease;
   outline: none;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .quran-input:focus {
@@ -317,9 +381,12 @@
   position: fixed;
   top: 16px;
   left: 50%;
+  -webkit-transform: translateX(-50%);
   transform: translateX(-50%);
   z-index: 9999;
+  display: -webkit-flex;
   display: flex;
+  -webkit-flex-direction: column;
   flex-direction: column;
   gap: 8px;
   pointer-events: none;
@@ -333,9 +400,10 @@
   padding: 12px 20px;
   min-width: 250px;
   max-width: 400px;
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.5);
+  -webkit-animation: toastSlideIn 0.4s ease-out;
   animation: toastSlideIn 0.4s ease-out;
   pointer-events: auto;
   text-align: right;
@@ -347,9 +415,14 @@
   background: rgba(30, 10, 10, 0.95);
 }
 
+@-webkit-keyframes toastSlideIn {
+  0% { opacity: 0; -webkit-transform: translateY(-20px) scale(0.95); transform: translateY(-20px) scale(0.95); }
+  100% { opacity: 1; -webkit-transform: translateY(0) scale(1); transform: translateY(0) scale(1); }
+}
+
 @keyframes toastSlideIn {
-  0% { opacity: 0; transform: translateY(-20px) scale(0.95); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
+  0% { opacity: 0; -webkit-transform: translateY(-20px) scale(0.95); transform: translateY(-20px) scale(0.95); }
+  100% { opacity: 1; -webkit-transform: translateY(0) scale(1); transform: translateY(0) scale(1); }
 }
 
 /* شريط التمرير المخصص */
@@ -366,6 +439,7 @@
 .custom-scrollbar::-webkit-scrollbar-thumb {
   background: rgba(245, 197, 66, 0.3);
   border-radius: 4px;
+  -webkit-transition: background 0.3s;
   transition: background 0.3s;
 }
 
@@ -374,23 +448,39 @@
 }
 
 /* الرسوم المتحركة */
+@-webkit-keyframes goldenShimmer {
+  0% { background-position: 0% center; }
+  100% { background-position: 200% center; }
+}
+
 @keyframes goldenShimmer {
   0% { background-position: 0% center; }
   100% { background-position: 200% center; }
 }
 
+@-webkit-keyframes trophyBounce {
+  0%, 100% { -webkit-transform: translateY(0) scale(1); transform: translateY(0) scale(1); }
+  50% { -webkit-transform: translateY(-10px) scale(1.05); transform: translateY(-10px) scale(1.05); }
+}
+
 @keyframes trophyBounce {
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-10px) scale(1.05); }
+  0%, 100% { -webkit-transform: translateY(0) scale(1); transform: translateY(0) scale(1); }
+  50% { -webkit-transform: translateY(-10px) scale(1.05); transform: translateY(-10px) scale(1.05); }
 }
 
 .animate-float {
+  -webkit-animation: float 3s ease-in-out infinite;
   animation: float 3s ease-in-out infinite;
 }
 
+@-webkit-keyframes float {
+  0%, 100% { -webkit-transform: translateY(0); transform: translateY(0); }
+  50% { -webkit-transform: translateY(-10px); transform: translateY(-10px); }
+}
+
 @keyframes float {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+  0%, 100% { -webkit-transform: translateY(0); transform: translateY(0); }
+  50% { -webkit-transform: translateY(-10px); transform: translateY(-10px); }
 }
 
 /* أنماط عامة للتطبيق */
@@ -401,12 +491,48 @@ body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  /* منع تأخير النقر 300ms على الأجهزة القديمة */
+  touch-action: manipulation;
 }
 
 /* إخفاء شريط التمرير مع الحفاظ على التمرير */
 html {
   scrollbar-width: thin;
   scrollbar-color: rgba(245, 197, 66, 0.3) rgba(8, 20, 43, 0.5);
+  /* دعم الأجهزة القديمة */
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+}
+
+/* تحسين الأزرار للمس على الجوال */
+button, a {
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* منع تأثير الظل الأزرق عند الضغط على الأندرويد القديم */
+button:focus, a:focus, input:focus, select:focus, textarea:focus {
+  outline: none;
+}
+
+button:focus-visible, a:focus-visible {
+  outline: 2px solid #ffd700;
+  outline-offset: 2px;
+}
+
+/* تحسين الصور */
+img {
+  -webkit-user-drag: none;
+  user-select: none;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
 }
 
 /* استجابة للشاشات الصغيرة */
@@ -420,6 +546,41 @@ html {
   .toast-container {
     left: 16px;
     right: 16px;
+    -webkit-transform: none;
     transform: none;
+  }
+}
+
+/* تحسين للشاشات الصغيرة جداً */
+@media (max-width: 360px) {
+  .card-glass {
+    border-radius: 12px;
+    border-width: 1.5px;
+  }
+
+  .btn-crimson-active,
+  .btn-crimson-inactive {
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+}
+
+/* دعم الوضع الداكن في النظام */
+@media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+}
+
+/* تحسين الأداء - تقليل الحركة لمن يفضل ذلك */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    -webkit-animation-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    -webkit-animation-iteration-count: 1 !important;
+    animation-iteration-count: 1 !important;
+    -webkit-transition-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
 }

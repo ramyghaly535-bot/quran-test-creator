@@ -11,17 +11,26 @@ export function formatPageNum(page: number): string {
 
 /** الحصول على مسار صورة الصفحة محلياً */
 export function getPageImagePath(page: number): string {
-  // في بيئة المتصفح، نحتاج لإضافة basePath يدوياً لروابط الصور
+  const basepath = `/quran-pages/page${formatPageNum(page)}.jpg`;
+  // في بيئة المتصفح، نستخدم withBasePath لإضافة المسار الأساسي تلقائياً
   if (typeof window !== 'undefined') {
     try {
+      // استخدام الكشف الديناميكي عن basePath
       // @ts-expect-error __NEXT_DATA__ is injected by Next.js
-      const basePath = window.__NEXT_DATA__?.basePath || '';
-      return `${basePath}/quran-pages/page${formatPageNum(page)}.jpg`;
+      const bp = window.__NEXT_DATA__?.basePath || '';
+      if (bp) return bp + basepath;
+      // كشف إضافي من URL
+      if (window.location.pathname !== '/') {
+        const segments = window.location.pathname.split('/').filter(Boolean);
+        const skip = ['_next','api','quran-pages','fonts','sw.js','manifest.json','index.html'];
+        const valid = segments.filter(s => skip.indexOf(s) === -1 && !s.endsWith('.html') && !s.endsWith('.json') && !s.endsWith('.js'));
+        if (valid.length > 0) return '/' + valid[0] + basepath;
+      }
     } catch {
-      // fallback
+      // fallback to default
     }
   }
-  return `/quran-pages/page${formatPageNum(page)}.jpg`;
+  return basepath;
 }
 
 /** عدد صفحات المصحف الكريم */

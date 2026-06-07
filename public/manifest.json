@@ -2,7 +2,8 @@
   "name": "منشئ اختبارات القرآن الكريم",
   "short_name": "اختبارات القرآن",
   "description": "تطبيق منشئ اختبارات حفظ القرآن الكريم - إنشاء اختبارات موضعية لدورات الحفظ",
-  "start_url": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#061225",
@@ -32,5 +33,6 @@
       "type": "image/png"
     }
   ],
-  "categories": ["education", "lifestyle"]
+  "categories": ["education", "lifestyle"],
+  "prefer_related_applications": false
 }

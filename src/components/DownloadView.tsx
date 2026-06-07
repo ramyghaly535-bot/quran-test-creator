@@ -1,9 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useQuranStore } from '@/lib/store';
-import { withBasePath } from '@/lib/base-path';
-import appIconSrc from '../../public/app-icon-1024.png';
+import { withBasePath, getBasePath } from '@/lib/base-path';
 
 const FEATURES = [
   { icon: '📚', title: 'اختيار الدورة', desc: '16 دورة حفظ من جزء واحد إلى 30 جزءاً' },
@@ -32,19 +31,18 @@ export default function DownloadView() {
   const goBack = useQuranStore(s => s.goBack);
   const viewMode = useQuranStore(s => s.viewMode);
   const [copied, setCopied] = useState(false);
-  const [currentUrl, setCurrentUrl] = useState('');
-
-  useEffect(() => {
-    setCurrentUrl(window.location.origin);
-  }, []);
+  const [iconSrc] = useState(() => withBasePath('/app-icon-1024.png'));
+  const [currentUrl] = useState(() => typeof window !== 'undefined' ? window.location.origin : '');
 
   const handleStartApp = () => {
     navigateTo('home');
-    window.history.pushState({}, '', '/');
+    const base = getBasePath();
+    window.history.pushState({}, '', base ? base + '/' : '/');
   };
 
   const handleShareLink = () => {
-    const url = currentUrl || window.location.origin;
+    const base = getBasePath();
+    const url = (currentUrl || window.location.origin) + (base ? base : '');
     if (navigator.share) {
       navigator.share({
         title: 'اختبارات القرآن الكريم',
@@ -59,7 +57,8 @@ export default function DownloadView() {
   };
 
   const handleShareWhatsApp = () => {
-    const url = currentUrl || window.location.origin;
+    const base = getBasePath();
+    const url = (currentUrl || window.location.origin) + (base ? base : '');
     const text = '📚 اختبارات القرآن الكريم\nتطبيق متكامل لإنشاء اختبارات حفظ القرآن\n🔗 ' + url;
     window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank');
   };
@@ -80,7 +79,7 @@ export default function DownloadView() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <img
-              src={appIconSrc}
+              src={iconSrc}
               alt="أيقونة"
               style={{ width: 36, height: 36, borderRadius: 8, border: '1.5px solid rgba(245, 197, 66, 0.3)' }}
             />
@@ -137,7 +136,7 @@ export default function DownloadView() {
                 overflow: 'hidden',
               }}>
                 <img
-                  src={appIconSrc}
+                  src={iconSrc}
                   alt="أيقونة تطبيق اختبارات القرآن"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
